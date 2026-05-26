@@ -31,7 +31,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 // Import routes
 import authRoutes from './routes/auth.js';
 import cmsRoutes from './routes/cms.js';
-/*
 import courseRoutes from './routes/courses.js';
 import facultyRoutes from './routes/faculty.js';
 import materialRoutes from './routes/materials.js';
@@ -45,7 +44,6 @@ import blogRoutes from './routes/blog.js';
 import adminRoutes from './routes/admin.js';
 import contactRoutes from './routes/contact.js';
 import noticeRoutes from './routes/notices.js';
-*/
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -53,8 +51,6 @@ app.use(generalLimiter);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/cms', cmsRoutes);
-
-/*
 app.use('/api/courses', courseRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/materials', materialRoutes);
@@ -68,7 +64,6 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notices', noticeRoutes);
-*/
 
 // Health check route
 app.get('/health', (req, res) => {
