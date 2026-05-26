@@ -17,8 +17,9 @@ const app = express();
 app.use(helmet({
   crossOriginResourcePolicy: false, // Allow loading images from different origins if needed
 }));
+const allowedOrigin = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigin,
   credentials: true,
 }));
 app.use(morgan('combined'));
