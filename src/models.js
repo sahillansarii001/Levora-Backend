@@ -1,0 +1,17 @@
+export { default as Student } from './models/Student.js';
+export { default as Parent } from './models/Parent.js';
+export { default as Faculty } from './models/Faculty.js';
+export { default as Course } from './models/Course.js';
+export { default as StudyMaterial } from './models/StudyMaterial.js';
+export { default as Admission } from './models/Admission.js';
+export { default as FeeRecord } from './models/FeeRecord.js';
+export { default as Attendance } from './models/Attendance.js';
+export { default as Test } from './models/Test.js';
+export { default as TestResult } from './models/TestResult.js';
+export { default as BlogPost } from './models/BlogPost.js';
+export { default as Testimonial } from './models/Testimonial.js';
+export { default as Result } from './models/Result.js';
+export { default as Enquiry } from './models/Enquiry.js';
+export { default as Notice } from './models/Notice.js';
+export { default as OTPRecord } from './models/OTPRecord.js';
+export { default as SiteContent } from './models/SiteContent.js';
