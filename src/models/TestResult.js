@@ -1,33 +1,7 @@
-import {  DataTypes  } from 'sequelize';
-import sequelize from '../config/database.js';
+import mongoose from 'mongoose';
 
-const TestResult = sequelize.define('TestResult', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  score: {
-    type: DataTypes.DECIMAL(5, 2),
-  },
-  totalMarks: {
-    type: DataTypes.INTEGER,
-  },
-  percentile: {
-    type: DataTypes.DECIMAL(5, 2),
-  },
-  rank: {
-    type: DataTypes.INTEGER,
-  },
-  attemptedAt: {
-    type: DataTypes.DATE,
-  },
-  timeTaken: {
-    type: DataTypes.INTEGER,
-  },
-}, {
-  tableName: 'test_results',
-  timestamps: true,
-});
+const schema = new mongoose.Schema({}, { strict: false, timestamps: true });
+
+const TestResult = mongoose.models.TestResult || mongoose.model('TestResult', schema);
 
 export default TestResult;

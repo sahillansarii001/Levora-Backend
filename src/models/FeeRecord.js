@@ -1,42 +1,7 @@
-import {  DataTypes  } from 'sequelize';
-import sequelize from '../config/database.js';
+import mongoose from 'mongoose';
 
-const FeeRecord = sequelize.define('FeeRecord', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  amount: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-  },
-  dueDate: {
-    type: DataTypes.DATE,
-  },
-  paidDate: {
-    type: DataTypes.DATE,
-  },
-  status: {
-    type: DataTypes.ENUM('paid', 'pending', 'overdue'),
-    defaultValue: 'pending',
-  },
-  installmentNumber: {
-    type: DataTypes.INTEGER,
-  },
-  paymentGateway: {
-    type: DataTypes.STRING,
-  },
-  transactionId: {
-    type: DataTypes.STRING,
-    unique: true,
-  },
-  receiptUrl: {
-    type: DataTypes.STRING,
-  },
-}, {
-  tableName: 'fee_records',
-  timestamps: true,
-});
+const schema = new mongoose.Schema({}, { strict: false, timestamps: true });
+
+const FeeRecord = mongoose.models.FeeRecord || mongoose.model('FeeRecord', schema);
 
 export default FeeRecord;

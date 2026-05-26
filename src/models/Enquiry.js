@@ -1,38 +1,7 @@
-import {  DataTypes  } from 'sequelize';
-import sequelize from '../config/database.js';
+import mongoose from 'mongoose';
 
-const Enquiry = sequelize.define('Enquiry', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  phone: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  message: {
-    type: DataTypes.TEXT,
-    allowNull: false,
-  },
-  courseInterest: {
-    type: DataTypes.STRING,
-  },
-  status: {
-    type: DataTypes.ENUM('new', 'contacted', 'resolved', 'ignored'),
-    defaultValue: 'new',
-  },
-}, {
-  tableName: 'enquiries',
-  timestamps: true,
-});
+const schema = new mongoose.Schema({}, { strict: false, timestamps: true });
+
+const Enquiry = mongoose.models.Enquiry || mongoose.model('Enquiry', schema);
 
 export default Enquiry;

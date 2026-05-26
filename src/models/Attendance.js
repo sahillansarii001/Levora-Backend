@@ -1,23 +1,7 @@
-import {  DataTypes  } from 'sequelize';
-import sequelize from '../config/database.js';
+import mongoose from 'mongoose';
 
-const Attendance = sequelize.define('Attendance', {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true,
-  },
-  date: {
-    type: DataTypes.DATE,
-    allowNull: false,
-  },
-  status: {
-    type: DataTypes.ENUM('present', 'absent', 'late'),
-    allowNull: false,
-  },
-}, {
-  tableName: 'attendance',
-  timestamps: true,
-});
+const schema = new mongoose.Schema({}, { strict: false, timestamps: true });
+
+const Attendance = mongoose.models.Attendance || mongoose.model('Attendance', schema);
 
 export default Attendance;
