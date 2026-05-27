@@ -45,6 +45,8 @@ import blogRoutes from './routes/blog.js';
 import adminRoutes from './routes/admin.js';
 import contactRoutes from './routes/contact.js';
 import noticeRoutes from './routes/notices.js';
+import salaryRoutes from './routes/salary.js';
+import settingsRoutes from './routes/settings.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -65,6 +67,8 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notices', noticeRoutes);
+app.use('/api/salary', salaryRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

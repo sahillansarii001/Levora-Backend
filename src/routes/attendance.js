@@ -1,17 +1,17 @@
 import express from 'express';
 const router = express.Router();
-import {  verifyToken  } from '../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
+import {
+  getAttendance,
+  createAttendance,
+  updateAttendance,
+  deleteAttendance
+} from '../controllers/attendanceController.js';
 
-router.get('/', verifyToken(['admin', 'faculty']), (req, res) => {
-  res.json({ message: 'Get attendance - to be implemented' });
-});
-
-router.post('/mark', verifyToken(['faculty']), (req, res) => {
-  res.json({ message: 'Mark attendance - to be implemented' });
-});
-
-router.get('/report/:courseId', verifyToken(['admin']), (req, res) => {
-  res.json({ message: 'Attendance report - to be implemented' });
-});
+// Admin routes for managing attendance
+router.get('/', verifyToken(['admin', 'superadmin', 'faculty']), getAttendance);
+router.post('/', verifyToken(['admin', 'superadmin', 'faculty']), createAttendance);
+router.put('/:id', verifyToken(['admin', 'superadmin', 'faculty']), updateAttendance);
+router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteAttendance);
 
 export default router;
