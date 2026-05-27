@@ -39,7 +39,7 @@ const mockResults = [
 
 async function setupData() {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, { family: 4 });
     console.log('Connected to MongoDB.');
 
     // Clear old data
