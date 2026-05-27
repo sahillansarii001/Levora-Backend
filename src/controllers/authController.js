@@ -6,6 +6,7 @@ import { generateOTP, verifyOTP } from '../utils/generateOTP.js';
 import { sendEmail, otpEmail } from '../utils/sendEmail.js';
 import generateStudentId from '../utils/generateStudentId.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
+import { logActivity } from './activityController.js';
 
 // Helper to generate both tokens for a user
 const generateTokens = (user, role) => {

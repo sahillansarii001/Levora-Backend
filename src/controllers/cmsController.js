@@ -5,6 +5,7 @@ import Faculty from '../models/Faculty.js';
 import StudyMaterial from '../models/StudyMaterial.js';
 import Result from '../models/Result.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
+import { logActivity } from './activityController.js';
 
 // ==========================================
 // NOTICES
@@ -19,6 +20,7 @@ export const getAllNotices = async (req, res) => {
 export const createNotice = async (req, res) => {
   try {
     const notice = await Notice.create(req.body);
+    await logActivity('content', 'New Notice Created', 'A new notice was added to the CMS.');
     successResponse(res, 'Notice created', notice, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -33,6 +35,7 @@ export const updateNotice = async (req, res) => {
 export const deleteNotice = async (req, res) => {
   try {
     await Notice.findByIdAndDelete(req.params.id);
+    await logActivity('content', 'Notice Deleted', 'A notice was removed from the CMS.');
     successResponse(res, 'Notice deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -66,6 +69,7 @@ export const createContent = async (req, res) => {
       return errorResponse(res, 'Page, key, and value are required', [], 400);
     }
     const content = await SiteContent.create({ page, section: section || 'general', key, value, type: type || 'text' });
+    await logActivity('content', 'New Content Created', `A new content block was added to the CMS: ${key}.`);
     successResponse(res, 'Content created successfully', content, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -99,6 +103,7 @@ export const updateContent = async (req, res) => {
 
     if (bulkOps.length > 0) {
       await SiteContent.bulkWrite(bulkOps);
+      await logActivity('content', 'Content Updated', 'Content blocks were updated in the CMS.');
     }
 
     successResponse(res, 'Content updated successfully', null);
@@ -120,6 +125,7 @@ export const getCourses = async (req, res) => {
 export const createCourse = async (req, res) => {
   try {
     const course = await Course.create(req.body);
+    await logActivity('content', 'New Course Created', 'A new course was added to the CMS.');
     successResponse(res, 'Course created', course, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -134,6 +140,7 @@ export const updateCourse = async (req, res) => {
 export const deleteCourse = async (req, res) => {
   try {
     await Course.findByIdAndDelete(req.params.id);
+    await logActivity('content', 'Course Deleted', 'A course was removed from the CMS.');
     successResponse(res, 'Course deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -151,6 +158,7 @@ export const getFaculty = async (req, res) => {
 export const createFaculty = async (req, res) => {
   try {
     const faculty = await Faculty.create(req.body);
+    await logActivity('content', 'New Faculty Created', 'A new faculty member was added to the CMS.');
     successResponse(res, 'Faculty created', faculty, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -168,6 +176,7 @@ export const updateFaculty = async (req, res) => {
 export const deleteFaculty = async (req, res) => {
   try {
     await Faculty.findByIdAndDelete(req.params.id);
+    await logActivity('content', 'Faculty Deleted', 'A faculty member was removed from the CMS.');
     successResponse(res, 'Faculty deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -185,6 +194,7 @@ export const getMaterials = async (req, res) => {
 export const createMaterial = async (req, res) => {
   try {
     const material = await StudyMaterial.create(req.body);
+    await logActivity('content', 'New Material Created', 'A new study material was added to the CMS.');
     successResponse(res, 'Material created', material, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -199,6 +209,7 @@ export const updateMaterial = async (req, res) => {
 export const deleteMaterial = async (req, res) => {
   try {
     await StudyMaterial.findByIdAndDelete(req.params.id);
+    await logActivity('content', 'Material Deleted', 'A study material was removed from the CMS.');
     successResponse(res, 'Material deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
@@ -216,6 +227,7 @@ export const getResults = async (req, res) => {
 export const createResult = async (req, res) => {
   try {
     const result = await Result.create(req.body);
+    await logActivity('content', 'New Result Created', 'A new result was added to the CMS.');
     successResponse(res, 'Result created', result, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
