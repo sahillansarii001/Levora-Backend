@@ -129,6 +129,60 @@ export const adminLogin = async (req, res) => {
   }
 };
 
+export const login = async (req, res) => {
+  try {
+    const identifier = req.body.email?.trim(); // can be email or ID
+    const password = req.body.password?.trim();
+
+    if (!identifier || !password) {
+      return errorResponse(res, 'Please provide email/ID and password', [], 400);
+    }
+
+    // 1. Check Admin / Superadmin
+    const isAdmin = identifier === (process.env.ADMIN_EMAIL || 'admin@levora.in') && 
+                    password === (process.env.ADMIN_PASSWORD || 'LevoraAdmin2026!');
+                    
+    const isSuperAdmin = identifier === (process.env.SUPERADMIN_EMAIL || 'superadmin@levora.in') && 
+                         password === (process.env.SUPERADMIN_PASSWORD || 'LevoraSuper2026!');
+
+    if (isAdmin || isSuperAdmin) {
+      const role = isSuperAdmin ? 'superadmin' : 'admin';
+      const token = jwt.sign(
+        { role, email: identifier },
+        process.env.JWT_SECRET || 'secret',
+        { expiresIn: process.env.JWT_EXPIRE || '15m' }
+      );
+      return successResponse(res, `${role === 'superadmin' ? 'Super Admin' : 'Admin'} login successful`, { token, role });
+    }
+
+    // 2. Check Student (by email or studentId)
+    const student = await Student.findOne({ 
+      $or: [{ email: identifier }, { studentId: identifier }] 
+    });
+
+    if (student) {
+      const isValid = await student.matchPassword(password);
+      if (isValid) {
+        const { accessToken, refreshToken } = generateTokens(student, 'student');
+        return successResponse(res, 'Student login successful', {
+          student: { id: student._id, name: student.name, email: student.email, studentId: student.studentId },
+          role: 'student',
+          accessToken,
+          refreshToken,
+          // maintain backwards compatibility token naming
+          token: accessToken
+        });
+      }
+    }
+
+    // 3. (Optional) Could add Faculty / Parent checks here...
+
+    return errorResponse(res, 'Invalid credentials', [], 401);
+  } catch (error) {
+    return errorResponse(res, error.message, [], 500);
+  }
+};
+
 export const sendOTPCode = async (req, res) => {
   try {
     const { email } = req.body;

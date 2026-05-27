@@ -111,7 +111,7 @@ const deleteFaculty = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getFaculties,
   getFacultyById,
   createFaculty,

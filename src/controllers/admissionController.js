@@ -77,7 +77,7 @@ const updateAdmissionStatus = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   submitAdmission,
   getAdmissions,
   updateAdmissionStatus,
