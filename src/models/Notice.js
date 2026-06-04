@@ -17,8 +17,12 @@ const noticeSchema = new mongoose.Schema({
   },
   targetAudience: {
     type: String,
-    enum: ['all', 'students', 'parents'],
+    enum: ['all', 'students', 'parents', 'faculties'],
     default: 'all'
+  },
+  sendPushNotification: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

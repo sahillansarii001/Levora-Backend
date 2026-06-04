@@ -48,6 +48,7 @@ import noticeRoutes from './routes/notices.js';
 import salaryRoutes from './routes/salary.js';
 import settingsRoutes from './routes/settings.js';
 import activityRoutes from './routes/activity.js';
+import lectureLogRoutes from './routes/lectureLog.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -71,6 +72,7 @@ app.use('/api/notices', noticeRoutes);
 app.use('/api/salary', salaryRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/lecture-logs', lectureLogRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

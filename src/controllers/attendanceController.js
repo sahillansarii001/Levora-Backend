@@ -3,11 +3,21 @@ import { successResponse, errorResponse, paginatedResponse } from '../utils/resp
 
 const getAttendance = async (req, res) => {
   try {
-    const { page = 1, limit = 10, userType } = req.query;
+    const { page = 1, limit = 1000, userType, date, fromDate, toDate, studentId, facultyId } = req.query;
     const skip = (page - 1) * limit;
 
     const filter = {};
     if (userType) filter.userType = userType;
+    if (studentId) filter.studentId = studentId;
+    if (facultyId) filter.facultyId = facultyId;
+
+    if (date) {
+      filter.date = new Date(date);
+    } else if (fromDate || toDate) {
+      filter.date = {};
+      if (fromDate) filter.date.$gte = new Date(fromDate);
+      if (toDate) filter.date.$lte = new Date(toDate);
+    }
 
     const count = await Attendance.countDocuments(filter);
     const records = await Attendance.find(filter)

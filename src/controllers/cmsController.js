@@ -47,7 +47,7 @@ export const getContent = async (req, res) => {
   try {
     const { page } = req.query;
     const filter = page ? { page } : {};
-    const content = await SiteContent.find(filter);
+    const content = await SiteContent.find(filter).sort({ createdAt: 1 });
     
     // Transform into key-value map for easier frontend consumption
     const contentMap = {};

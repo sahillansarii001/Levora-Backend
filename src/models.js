@@ -17,3 +17,4 @@ export { default as Enquiry } from './models/Enquiry.js';
 export { default as Notice } from './models/Notice.js';
 export { default as OTPRecord } from './models/OTPRecord.js';
 export { default as SiteContent } from './models/SiteContent.js';
+export { default as LectureLog } from './models/LectureLog.js';

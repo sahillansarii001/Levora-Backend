@@ -5,8 +5,8 @@ const submitAdmission = async (req, res) => {
   try {
     const { studentId, courseId, documents } = req.body;
 
-    const student = await Student.findByPk(studentId);
-    const course = await Course.findByPk(courseId);
+    const student = await Student.findById(studentId);
+    const course = await Course.findById(courseId);
 
     if (!student || !course) {
       return errorResponse(res, 'Student or Course not found', [], 404);
@@ -33,16 +33,13 @@ const getAdmissions = async (req, res) => {
     if (status) where.status = status;
 
     const offset = (page - 1) * limit;
-    const { rows, count } = await Admission.findAndCountAll({
-      where,
-      include: [
-        { model: Student, attributes: ['name', 'email', 'phone'] },
-        { model: Course, attributes: ['title', 'category'] },
-      ],
-      limit: parseInt(limit),
-      offset,
-      order: [['createdAt', 'DESC']],
-    });
+    const count = await Admission.countDocuments(where);
+    const rows = await Admission.find(where)
+      .populate('studentId', 'name email phone')
+      .populate('courseId', 'title category')
+      .skip(offset)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
 
     paginatedResponse(res, rows, page, limit, count, 'Admissions fetched successfully');
   } catch (error) {
@@ -59,7 +56,7 @@ const updateAdmissionStatus = async (req, res) => {
       return errorResponse(res, 'Invalid status', [], 400);
     }
 
-    const admission = await Admission.findByPk(id);
+    const admission = await Admission.findById(id);
     if (!admission) {
       return errorResponse(res, 'Admission not found', [], 404);
     }
