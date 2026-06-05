@@ -1,23 +1,32 @@
-import {  Course  } from '../models.js';
+import {  Course, LectureLog  } from '../models.js';
 import {  successResponse, errorResponse, paginatedResponse  } from '../utils/responseHelper.js';
 
 const getCourses = async (req, res) => {
   try {
-    const { category, mode, page = 1, limit = 10 } = req.query;
+    const { category, mode, batch, page = 1, limit = 10 } = req.query;
     const where = { status: 'active' };
 
     if (category) where.category = category;
     if (mode) where.mode = mode;
+    if (batch) where.batches = batch; // MongoDB handles array inclusion automatically
 
     const offset = (page - 1) * limit;
     
     const count = await Course.countDocuments(where);
-    const rows = await Course.find(where)
+    const courses = await Course.find(where)
       .skip(offset)
       .limit(parseInt(limit))
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    paginatedResponse(res, rows, page, limit, count, 'Courses fetched successfully');
+    // Attach completed lessons count from LectureLog
+    for (let course of courses) {
+      const logsCount = await LectureLog.countDocuments({ subject: course.title });
+      course.completedLessons = logsCount;
+      course.totalLessons = course.totalLessons || 30; // Default to 30 if not specified
+    }
+
+    paginatedResponse(res, courses, page, limit, count, 'Courses fetched successfully');
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -40,7 +49,7 @@ const getCourseBySlug = async (req, res) => {
 
 const createCourse = async (req, res) => {
   try {
-    const { title, courseCode, description, category, duration, fee, mode } = req.body;
+    const { title, courseCode, description, category, duration, fee, mode, batches } = req.body;
 
     const existingCourse = await Course.findOne({ courseCode });
     if (existingCourse) {
@@ -55,6 +64,7 @@ const createCourse = async (req, res) => {
       duration,
       fee,
       mode,
+      batches: batches || [],
     });
 
     successResponse(res, 'Course created successfully', course, 201);

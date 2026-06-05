@@ -11,8 +11,8 @@ import {  verifyToken  } from '../middleware/auth.js';
 
 router.get('/', getCourses);
 router.get('/:slug', getCourseBySlug);
-router.post('/', verifyToken(['admin']), createCourse);
-router.put('/:id', verifyToken(['admin']), updateCourse);
-router.delete('/:id', verifyToken(['admin']), deleteCourse);
+router.post('/', verifyToken(['admin', 'superadmin']), createCourse);
+router.put('/:id', verifyToken(['admin', 'superadmin']), updateCourse);
+router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteCourse);
 
 export default router;
