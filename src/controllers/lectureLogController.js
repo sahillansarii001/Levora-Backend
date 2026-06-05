@@ -8,7 +8,11 @@ export const getLectureLogs = async (req, res) => {
 
     const filter = {};
     if (facultyId) filter.facultyId = facultyId;
-    if (subject) filter.subject = subject;
+    if (subject) {
+      // Grab the first significant word to match against DB (e.g. "Physics" from "Physics Mechanics")
+      const baseSubject = subject.split(/[-\s]+/)[0].trim();
+      filter.subject = new RegExp(baseSubject, 'i');
+    }
     if (date) {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);

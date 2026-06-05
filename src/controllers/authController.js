@@ -296,3 +296,19 @@ export const googleLogin = async (req, res) => {
     errorResponse(res, error.message, [], 500);
   }
 };
+
+export const refreshToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return errorResponse(res, 'Refresh token is required', [], 400);
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'refresh');
+    
+    // Generate new access token
+    const newAccessToken = createAccessToken({ id: decoded.id, email: decoded.email, role: decoded.role });
+    
+    successResponse(res, 'Token refreshed successfully', { accessToken: newAccessToken, token: newAccessToken });
+  } catch (error) {
+    errorResponse(res, 'Invalid or expired refresh token', [], 401);
+  }
+};

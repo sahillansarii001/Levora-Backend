@@ -21,9 +21,17 @@ const getCourses = async (req, res) => {
 
     // Attach completed lessons count from LectureLog
     for (let course of courses) {
-      const logsCount = await LectureLog.countDocuments({ subject: course.title });
+      const baseSubject = course.title.split(/[-\s]+/)[0].trim();
+      const logQuery = { subject: new RegExp(baseSubject, 'i') };
+      
+      const logsCount = await LectureLog.countDocuments(logQuery);
+      const latestLog = await LectureLog.findOne(logQuery)
+        .sort({ date: -1 })
+        .populate('facultyId', 'name');
+        
       course.completedLessons = logsCount;
       course.totalLessons = course.totalLessons || 30; // Default to 30 if not specified
+      course.facultyName = latestLog?.facultyId?.name || null;
     }
 
     paginatedResponse(res, courses, page, limit, count, 'Courses fetched successfully');

@@ -6,7 +6,8 @@ import {
   adminLogin,
   login,
   sendOTPCode,
-  verifyOTPCode
+  verifyOTPCode,
+  refreshToken
  } from '../controllers/authController.js';
 import {  authLimiter  } from '../middleware/rateLimiter.js';
 
@@ -16,5 +17,6 @@ router.post('/student/login', authLimiter, studentLogin);
 router.post('/admin/login', authLimiter, adminLogin);
 router.post('/send-otp', sendOTPCode);
 router.post('/verify-otp', verifyOTPCode);
+router.post('/refresh', refreshToken);
 
 export default router;
