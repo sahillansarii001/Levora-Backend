@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import Student from '../models/Student.js';
 import Parent from '../models/Parent.js';
 import Faculty from '../models/Faculty.js';
@@ -6,7 +7,11 @@ import { generateOTP, verifyOTP } from '../utils/generateOTP.js';
 import { sendEmail, otpEmail } from '../utils/sendEmail.js';
 import generateStudentId from '../utils/generateStudentId.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
+import { createAccessToken, createRefreshToken } from '../utils/tokenUtils.js';
 import { logActivity } from './activityController.js';
+import crypto from 'crypto';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Helper to generate both tokens for a user
 const generateTokens = (user, role) => {
@@ -92,7 +97,7 @@ export const studentLogin = async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(student, 'student');
 
     successResponse(res, 'Login successful', {
-      student: { id: student._id, name: student.name, email, studentId: student.studentId },
+      student: { id: student._id, name: student.name, email, studentId: student.studentId, className: student.className },
       accessToken,
       refreshToken,
     });
@@ -166,7 +171,7 @@ export const login = async (req, res) => {
       if (isValid) {
         const { accessToken, refreshToken } = generateTokens(student, 'student');
         return successResponse(res, 'Student login successful', {
-          student: { id: student._id, name: student.name, email: student.email, studentId: student.studentId },
+          student: { id: student._id, name: student.name, email: student.email, studentId: student.studentId, className: student.className },
           role: 'student',
           accessToken,
           refreshToken,
@@ -192,6 +197,7 @@ export const sendOTPCode = async (req, res) => {
     }
 
     const otp = await generateOTP(email);
+    console.log(`[DEV MODE] OTP for ${email} is: ${otp}`);
     const emailResult = await sendEmail(email, 'Your Levora Academy OTP', otpEmail(otp));
 
     if (emailResult.success) {
@@ -206,4 +212,87 @@ export const sendOTPCode = async (req, res) => {
 
 export const verifyOTPCode = async (req, res) => {
   res.send('Not implemented yet');
+};
+
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { idToken, role = 'student' } = req.body;
+
+    if (!idToken) {
+      return errorResponse(res, 'Google ID Token is required', [], 400);
+    }
+
+    if (!['student', 'parent', 'faculty'].includes(role)) {
+      return errorResponse(res, 'Invalid role', [], 400);
+    }
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      return errorResponse(res, 'Invalid Google token', [], 400);
+    }
+
+    const { name, email, picture } = payload;
+
+    let Model;
+    if (role === 'student') Model = Student;
+    else if (role === 'parent') Model = Parent;
+    else if (role === 'faculty') Model = Faculty;
+
+    let user = await Model.findOne({ email });
+
+    // Auto-register if not exists
+    if (!user) {
+      // Check if email belongs to a different role first
+      const studentExists = await Student.findOne({ email });
+      const parentExists = await Parent.findOne({ email });
+      const facultyExists = await Faculty.findOne({ email });
+      
+      if (studentExists || parentExists || facultyExists) {
+         return errorResponse(res, 'Email already registered under a different role', [], 400);
+      }
+
+      // Generate a highly secure random password to satisfy schema requirements
+      const randomPassword = crypto.randomBytes(16).toString('hex') + 'A1!';
+      
+      let userData = {
+        name,
+        email,
+        phone: 'Not Provided',
+        password: randomPassword,
+        profileImage: picture
+      };
+
+      if (role === 'student') {
+        userData.studentId = await generateStudentId();
+      } else if (role === 'faculty') {
+        userData.facultyId = `FAC${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      user = await Model.create(userData);
+    }
+
+    // Login user
+    const { accessToken, refreshToken } = generateTokens(user, role);
+
+    const responseData = { id: user._id, name: user.name, email: user.email, profileImage: user.profileImage || picture };
+    if (role === 'student') responseData.studentId = user.studentId;
+    if (role === 'faculty') responseData.facultyId = user.facultyId;
+
+    successResponse(res, 'Google Login successful', {
+      user: responseData,
+      role,
+      accessToken,
+      refreshToken,
+      token: accessToken
+    });
+
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
 };

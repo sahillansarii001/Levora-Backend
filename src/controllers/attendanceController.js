@@ -11,6 +11,12 @@ const getAttendance = async (req, res) => {
     if (studentId) filter.studentId = studentId;
     if (facultyId) filter.facultyId = facultyId;
 
+    // Security check: Force students to only see their own records
+    if (req.user && req.user.role === 'student') {
+      filter.userType = 'student';
+      filter.studentId = req.user.id;
+    }
+
     if (date) {
       filter.date = new Date(date);
     } else if (fromDate || toDate) {

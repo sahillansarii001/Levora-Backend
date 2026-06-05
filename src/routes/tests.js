@@ -1,10 +1,13 @@
 import express from 'express';
 const router = express.Router();
-import {  verifyToken  } from '../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
+import { getStudentTestResults } from '../controllers/testController.js';
 
 router.get('/', (req, res) => {
   res.json({ message: 'Get tests - to be implemented' });
 });
+
+router.get('/student/recent', verifyToken(['student']), getStudentTestResults);
 
 router.post('/', verifyToken(['admin', 'faculty']), (req, res) => {
   res.json({ message: 'Create test - to be implemented' });

@@ -8,8 +8,8 @@ import {
   deleteAttendance
 } from '../controllers/attendanceController.js';
 
-// Admin routes for managing attendance
-router.get('/', verifyToken(['admin', 'superadmin', 'faculty']), getAttendance);
+// Admin & Student routes for managing/viewing attendance
+router.get('/', verifyToken(['admin', 'superadmin', 'faculty', 'student', 'parent']), getAttendance);
 router.post('/', verifyToken(['admin', 'superadmin', 'faculty']), createAttendance);
 router.put('/:id', verifyToken(['admin', 'superadmin', 'faculty']), updateAttendance);
 router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteAttendance);

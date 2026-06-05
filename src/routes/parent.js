@@ -7,6 +7,7 @@ import {
   createParent,
   updateParent,
   deleteParent,
+  getParentDashboard
 } from '../controllers/parentController.js';
 
 // Admin routes for managing parents
@@ -15,9 +16,9 @@ router.get('/:id', verifyToken(['admin', 'superadmin']), getParentById);
 router.post('/', verifyToken(['admin', 'superadmin']), createParent);
 router.put('/:id', verifyToken(['admin', 'superadmin']), updateParent);
 router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteParent);
-router.get('/dashboard', verifyToken(['parent']), (req, res) => {
-  res.json({ message: 'Parent dashboard - to be implemented' });
-});
+
+// Parent dashboard
+router.get('/dashboard', verifyToken(['parent']), getParentDashboard);
 
 router.get('/child/attendance', verifyToken(['parent']), (req, res) => {
   res.json({ message: 'Child attendance - to be implemented' });

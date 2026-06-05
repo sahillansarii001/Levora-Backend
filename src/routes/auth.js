@@ -6,7 +6,7 @@ import {
   adminLogin,
   login,
   sendOTPCode,
-  verifyOTPCode,
+  verifyOTPCode
  } from '../controllers/authController.js';
 import {  authLimiter  } from '../middleware/rateLimiter.js';
 

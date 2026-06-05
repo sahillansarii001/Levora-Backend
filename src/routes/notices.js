@@ -1,10 +1,9 @@
 import express from 'express';
 const router = express.Router();
-import {  verifyToken  } from '../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
+import { getNotices } from '../controllers/noticeController.js';
 
-router.get('/', (req, res) => {
-  res.json({ message: 'Get notices - to be implemented' });
-});
+router.get('/', verifyToken(['student', 'parent', 'faculty', 'admin', 'superadmin']), getNotices);
 
 router.post('/', verifyToken(['admin']), (req, res) => {
   res.json({ message: 'Create notice - to be implemented' });

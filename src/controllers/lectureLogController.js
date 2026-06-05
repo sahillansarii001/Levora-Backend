@@ -3,11 +3,12 @@ import { successResponse, errorResponse, paginatedResponse } from '../utils/resp
 
 export const getLectureLogs = async (req, res) => {
   try {
-    const { page = 1, limit = 20, facultyId, date } = req.query;
+    const { page = 1, limit = 20, facultyId, date, subject } = req.query;
     const skip = (page - 1) * limit;
 
     const filter = {};
     if (facultyId) filter.facultyId = facultyId;
+    if (subject) filter.subject = subject;
     if (date) {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);

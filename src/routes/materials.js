@@ -1,18 +1,15 @@
 import express from 'express';
+import { getMaterials, createMaterial } from '../controllers/materialController.js';
+import { verifyToken } from '../middleware/auth.js';
+
 const router = express.Router();
-import {  verifyToken  } from '../middleware/auth.js';
 
-// Placeholder for materials controllers
-router.get('/', (req, res) => {
-  res.json({ message: 'Get materials - to be implemented' });
-});
+router.get('/', verifyToken(['student', 'admin', 'faculty']), getMaterials);
+router.post('/', verifyToken(['admin', 'faculty']), createMaterial);
 
+// Keep the rest of the placeholders for now if needed, or remove them.
 router.get('/:id', (req, res) => {
   res.json({ message: 'Get material by ID - to be implemented' });
-});
-
-router.post('/', verifyToken(['admin', 'faculty']), (req, res) => {
-  res.json({ message: 'Create material - to be implemented' });
 });
 
 router.put('/:id', verifyToken(['admin', 'faculty']), (req, res) => {
