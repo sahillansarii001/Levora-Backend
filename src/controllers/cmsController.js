@@ -90,11 +90,15 @@ export const updateContent = async (req, res) => {
       await SiteContent.deleteMany({ page, key: { $nin: updateKeys } });
     }
 
-    const bulkOps = updates.map(update => ({
+    const baseDate = Date.now();
+    const bulkOps = updates.map((update, index) => ({
       updateOne: {
         filter: { key: update.key },
         update: { 
-          $set: { value: update.value },
+          $set: { 
+            value: update.value,
+            createdAt: new Date(baseDate + index * 1000)
+          },
           $setOnInsert: { page: update.page || 'homepage', section: update.section || 'general', type: 'html' }
         },
         upsert: true // Allow upserting
@@ -102,7 +106,7 @@ export const updateContent = async (req, res) => {
     }));
 
     if (bulkOps.length > 0) {
-      await SiteContent.bulkWrite(bulkOps);
+      await SiteContent.collection.bulkWrite(bulkOps);
       await logActivity('content', 'Content Updated', 'Content blocks were updated in the CMS.');
     }
 
