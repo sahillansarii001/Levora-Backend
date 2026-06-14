@@ -25,6 +25,31 @@ const submitAdmission = async (req, res) => {
   }
 };
 
+const submitPublicAdmission = async (req, res) => {
+  try {
+    const { name, phone, email, program, grade, inquiryType, message } = req.body;
+
+    if (!name || !phone) {
+      return errorResponse(res, 'Name and phone are required', [], 400);
+    }
+
+    const admission = await Admission.create({
+      inquiryType: inquiryType || 'Take Admission',
+      name,
+      phone,
+      email,
+      program,
+      grade,
+      message,
+      status: 'pending',
+    });
+
+    successResponse(res, 'Inquiry submitted successfully', admission, 201);
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
 const getAdmissions = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
@@ -35,8 +60,8 @@ const getAdmissions = async (req, res) => {
     const offset = (page - 1) * limit;
     const count = await Admission.countDocuments(where);
     const rows = await Admission.find(where)
-      .populate('studentId', 'name email phone')
-      .populate('courseId', 'title category')
+      .populate({ path: 'studentId', select: 'name email phone', strictPopulate: false })
+      .populate({ path: 'courseId', select: 'title category', strictPopulate: false })
       .skip(offset)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
@@ -56,19 +81,30 @@ const updateAdmissionStatus = async (req, res) => {
       return errorResponse(res, 'Invalid status', [], 400);
     }
 
-    const admission = await Admission.findById(id);
+    const updateData = { status, remarks };
+    if (status === 'approved') {
+      updateData.approvedAt = new Date();
+    }
+
+    const admission = await Admission.findByIdAndUpdate(id, updateData, { new: true });
     if (!admission) {
       return errorResponse(res, 'Admission not found', [], 404);
     }
 
-    admission.status = status;
-    admission.remarks = remarks;
-    if (status === 'approved') {
-      admission.approvedAt = new Date();
-    }
-
-    await admission.save();
     successResponse(res, 'Admission status updated successfully', admission);
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
+const deleteAdmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const admission = await Admission.findByIdAndDelete(id);
+    if (!admission) {
+      return errorResponse(res, 'Admission not found', [], 404);
+    }
+    successResponse(res, 'Admission deleted successfully', null);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -118,8 +154,10 @@ const getAdmissionsFaqs = async (req, res) => {
 
 export {
   submitAdmission,
+  submitPublicAdmission,
   getAdmissions,
   updateAdmissionStatus,
+  deleteAdmission,
   getAdmissionsHero,
   getAdmissionsPrograms,
   getAdmissionsSteps,

@@ -2,8 +2,10 @@ import express from 'express';
 const router = express.Router();
 import { 
   submitAdmission,
+  submitPublicAdmission,
   getAdmissions,
   updateAdmissionStatus,
+  deleteAdmission,
   getAdmissionsHero,
   getAdmissionsPrograms,
   getAdmissionsSteps,
@@ -12,10 +14,12 @@ import {
 import {  verifyToken  } from '../middleware/auth.js';
 
 router.post('/', submitAdmission);
-router.get('/', verifyToken(['admin']), getAdmissions);
-router.put('/:id/status', verifyToken(['admin']), updateAdmissionStatus);
+router.get('/', verifyToken(['admin', 'superadmin']), getAdmissions);
+router.put('/:id/status', verifyToken(['admin', 'superadmin']), updateAdmissionStatus);
+router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteAdmission);
 
 // Public API routes for Admissions Page
+router.post('/public', submitPublicAdmission);
 router.get('/hero', getAdmissionsHero);
 router.get('/programs', getAdmissionsPrograms);
 router.get('/steps', getAdmissionsSteps);
