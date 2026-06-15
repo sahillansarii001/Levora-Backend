@@ -1,5 +1,6 @@
 import { Attendance, Student, Faculty } from '../models.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/responseHelper.js';
+import mongoose from 'mongoose';
 
 const getAttendance = async (req, res) => {
   try {
@@ -14,7 +15,20 @@ const getAttendance = async (req, res) => {
     // Security check: Force students to only see their own records
     if (req.user && req.user.role === 'student') {
       filter.userType = 'student';
-      filter.studentId = req.user.id;
+      try {
+        filter.studentId = new mongoose.Types.ObjectId(req.user.id);
+      } catch(e) {
+        filter.studentId = req.user.id;
+      }
+    } else if (studentId && studentId !== 'undefined') {
+      try {
+        filter.studentId = new mongoose.Types.ObjectId(studentId);
+      } catch(e) {
+        filter.studentId = studentId;
+      }
+    } else if (studentId === 'undefined' && req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
+      // In Admin preview, if studentId is undefined, show global records
+      delete filter.studentId;
     }
 
     if (date) {
@@ -22,7 +36,11 @@ const getAttendance = async (req, res) => {
     } else if (fromDate || toDate) {
       filter.date = {};
       if (fromDate) filter.date.$gte = new Date(fromDate);
-      if (toDate) filter.date.$lte = new Date(toDate);
+      if (toDate) {
+        let endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        filter.date.$lte = endDate;
+      }
     }
 
     const count = await Attendance.countDocuments(filter);

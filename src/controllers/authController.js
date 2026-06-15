@@ -15,7 +15,13 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Helper to generate both tokens for a user
 const generateTokens = (user, role) => {
-  const payload = { id: user._id, email: user.email, role };
+  const payload = { 
+    id: user._id, 
+    email: user.email, 
+    role,
+    name: user.name,
+    className: user.className
+  };
   const accessToken = createAccessToken(payload);
   const refreshToken = createRefreshToken(payload);
   return { accessToken, refreshToken };
@@ -181,7 +187,43 @@ export const login = async (req, res) => {
       }
     }
 
-    // 3. (Optional) Could add Faculty / Parent checks here...
+    // 3. Check Parent (by email or phone)
+    const parent = await Parent.findOne({ 
+      $or: [{ email: identifier }, { phone: identifier }] 
+    });
+
+    if (parent) {
+      const isValid = await parent.matchPassword(password);
+      if (isValid) {
+        const { accessToken, refreshToken } = generateTokens(parent, 'parent');
+        return successResponse(res, 'Parent login successful', {
+          user: { id: parent._id, name: parent.name, email: parent.email, parentOf: parent.parentOf },
+          role: 'parent',
+          accessToken,
+          refreshToken,
+          token: accessToken
+        });
+      }
+    }
+
+    // 4. Check Faculty (by email or facultyId)
+    const faculty = await Faculty.findOne({
+      $or: [{ email: identifier }, { facultyId: identifier }]
+    });
+
+    if (faculty && faculty.status === 'active') {
+      const isValid = await faculty.matchPassword(password);
+      if (isValid) {
+        const { accessToken, refreshToken } = generateTokens(faculty, 'faculty');
+        return successResponse(res, 'Faculty login successful', {
+          user: { id: faculty._id, name: faculty.name, email: faculty.email, facultyId: faculty.facultyId, subject: faculty.subject },
+          role: 'faculty',
+          accessToken,
+          refreshToken,
+          token: accessToken
+        });
+      }
+    }
 
     return errorResponse(res, 'Invalid credentials', [], 401);
   } catch (error) {

@@ -4,28 +4,29 @@ import { verifyToken } from '../middleware/auth.js';
 import {
   getStudents,
   getStudentById,
+  getStudentProfile,
   createStudent,
   updateStudent,
   deleteStudent,
+  getStudentFees
 } from '../controllers/studentController.js';
 
 // Admin routes for managing students
 router.get('/', verifyToken(['admin', 'superadmin']), getStudents);
+router.get('/profile', verifyToken(['student']), getStudentProfile);
 router.get('/:id', verifyToken(['admin', 'superadmin']), getStudentById);
 router.post('/', verifyToken(['admin', 'superadmin']), createStudent);
 router.put('/:id', verifyToken(['admin', 'superadmin']), updateStudent);
 router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteStudent);
-router.get('/dashboard', verifyToken(['student']), (req, res) => {
+router.get('/dashboard', verifyToken(['student', 'admin', 'superadmin']), (req, res) => {
   res.json({ message: 'Student dashboard - to be implemented' });
 });
 
-router.get('/attendance', verifyToken(['student']), (req, res) => {
+router.get('/attendance', verifyToken(['student', 'admin', 'superadmin']), (req, res) => {
   res.json({ message: 'Student attendance - to be implemented' });
 });
 
-router.get('/fees', verifyToken(['student']), (req, res) => {
-  res.json({ message: 'Student fees - to be implemented' });
-});
+router.get('/fees', verifyToken(['student', 'admin', 'superadmin']), getStudentFees);
 
 router.get('/materials', verifyToken(['student']), (req, res) => {
   res.json({ message: 'Student materials - to be implemented' });

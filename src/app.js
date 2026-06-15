@@ -50,6 +50,8 @@ import settingsRoutes from './routes/settings.js';
 import activityRoutes from './routes/activity.js';
 import lectureLogRoutes from './routes/lectureLog.js';
 import scheduleRoutes from './routes/schedule.js';
+import assignmentRoutes from './routes/assignments.js';
+import examResultRoutes from './routes/examResults.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -75,6 +77,8 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/lecture-logs', lectureLogRoutes);
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/exam-results', examResultRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

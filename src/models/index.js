@@ -18,6 +18,7 @@ import Notice from './Notice.js';
 import OTPRecord from './OTPRecord.js';
 import SiteContent from './SiteContent.js';
 import LectureLog from './LectureLog.js';
+import ExamResult from './ExamResult.js';
 
 const db = {
   Student,
@@ -40,5 +41,6 @@ const db = {
   OTPRecord,
   SiteContent,
   LectureLog,
+  ExamResult,
 };
 export default db;

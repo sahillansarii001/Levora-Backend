@@ -4,8 +4,8 @@ import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', verifyToken(['student', 'admin', 'faculty']), getMaterials);
-router.post('/', verifyToken(['admin', 'faculty']), createMaterial);
+router.get('/', verifyToken(['student', 'admin', 'faculty', 'superadmin', 'parent']), getMaterials);
+router.post('/', verifyToken(['admin', 'faculty', 'superadmin']), createMaterial);
 
 // Keep the rest of the placeholders for now if needed, or remove them.
 router.get('/:id', (req, res) => {

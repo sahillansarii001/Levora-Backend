@@ -14,10 +14,15 @@ const verifyToken = (roles = []) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+      // Backwards compatibility for older tokens that didn't include the role field
+      if (!decoded.role) {
+        decoded.role = 'student';
+      }
+
       if (roles.length && !roles.includes(decoded.role)) {
         return res.status(403).json({
           success: false,
-          message: 'Insufficient permissions',
+          message: `Insufficient permissions. Required: ${roles.join(', ')}. Got: ${decoded.role}`,
         });
       }
 

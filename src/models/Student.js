@@ -19,6 +19,7 @@ const studentSchema = new mongoose.Schema({
   batch: { type: String },
   profileImage: { type: String },
   documents: { type: Array, default: [] },
+  totalFees: { type: Number, default: 0 },
   admissionDate: { type: Date, default: Date.now },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
 }, {

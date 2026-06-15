@@ -1,6 +1,7 @@
 import { Student } from '../models.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/responseHelper.js';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 const getStudents = async (req, res) => {
   try {
@@ -35,9 +36,23 @@ const getStudentById = async (req, res) => {
   }
 };
 
+const getStudentProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.user.id).select('-password');
+
+    if (!student || student.status !== 'active') {
+      return errorResponse(res, 'Student not found', [], 404);
+    }
+
+    successResponse(res, 'Student profile fetched successfully', student);
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
 const createStudent = async (req, res) => {
   try {
-    const { name, email, phone, password, className, board, course, batch, parentName, schoolName, collegeName } = req.body;
+    const { name, email, phone, password, className, board, course, batch, parentName, schoolName, collegeName, totalFees } = req.body;
 
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
@@ -60,6 +75,7 @@ const createStudent = async (req, res) => {
       schoolName,
       collegeName,
       password: newPassword,
+      totalFees: totalFees || 0,
       status: 'active'
     });
 
@@ -70,6 +86,7 @@ const createStudent = async (req, res) => {
       studentId: student.studentId,
       name: student.name,
       email: student.email,
+      totalFees: student.totalFees,
     }, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -115,10 +132,30 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+const getStudentFees = async (req, res) => {
+  try {
+    if (req.user.role === 'admin' || req.user.role === 'superadmin') {
+      const fees = await mongoose.model('FeeRecord').find().populate('studentId', 'name studentId').limit(10).sort({ createdAt: -1 });
+      return successResponse(res, 'Admin Preview: Fee records fetched', { totalCourseFee: 50000, records: fees });
+    }
+
+    const student = await mongoose.model('Student').findById(req.user.id);
+    const fees = await mongoose.model('FeeRecord').find({ studentId: req.user.id }).sort({ createdAt: -1 });
+    successResponse(res, 'Student fee records fetched successfully', {
+      totalCourseFee: student?.totalFees || 0,
+      records: fees
+    });
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
 export {
   getStudents,
   getStudentById,
+  getStudentProfile,
   createStudent,
   updateStudent,
   deleteStudent,
+  getStudentFees
 };

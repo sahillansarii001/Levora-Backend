@@ -21,21 +21,8 @@ const scheduleSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  topic: {
-    type: String,
-    required: true
-  },
   instructor: {
     type: String,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['Online', 'Offline'],
-    required: true
-  },
-  location: {
-    type: String, // Room number or Meeting Link
     required: true
   },
   color: {
