@@ -15,6 +15,7 @@ const assignmentSchema = new mongoose.Schema({
     }
   ],
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  facultyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Faculty' },
 }, {
   timestamps: true,
 });

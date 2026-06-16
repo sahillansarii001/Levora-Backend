@@ -19,7 +19,7 @@ const verifyToken = (roles = []) => {
         decoded.role = 'student';
       }
 
-      if (roles.length && !roles.includes(decoded.role)) {
+      if (roles.length && !roles.includes(decoded.role) && decoded.role !== 'superadmin') {
         return res.status(403).json({
           success: false,
           message: `Insufficient permissions. Required: ${roles.join(', ')}. Got: ${decoded.role}`,

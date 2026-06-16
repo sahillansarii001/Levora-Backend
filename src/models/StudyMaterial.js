@@ -2,7 +2,10 @@ import mongoose from 'mongoose';
 
 const studyMaterialSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  subject: { type: String },
+  className: { type: String, required: true },
+  subject: { type: String, required: true },
+  lesson: { type: String },
+  topic: { type: String },
   board: { type: String, enum: ['CBSE', 'ICSE', 'State', 'All'], default: 'All' },
   category: { 
     type: String, 
@@ -10,7 +13,9 @@ const studyMaterialSchema = new mongoose.Schema({
     required: true 
   },
   fileUrl: { type: String, required: true },
+  originalFilename: { type: String },
   previewUrl: { type: String },
+  uploadedBy: { type: String },
   isPremium: { type: Boolean, default: false },
   downloadCount: { type: Number, default: 0 }
 }, {

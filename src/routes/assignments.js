@@ -4,16 +4,18 @@ import {
   getAdminAssignments,
   deleteAssignment,
   getStudentAssignments,
-  markAssignmentCompleted
+  markAssignmentCompleted,
+  getFacultyAssignments
 } from '../controllers/assignmentController.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Admin routes
-router.post('/', verifyToken(['admin', 'superadmin']), createAssignment);
+// Admin and Faculty routes
+router.post('/', verifyToken(['admin', 'superadmin', 'faculty']), createAssignment);
 router.get('/admin', verifyToken(['admin', 'superadmin']), getAdminAssignments);
-router.delete('/:id', verifyToken(['admin', 'superadmin']), deleteAssignment);
+router.get('/faculty', verifyToken(['faculty']), getFacultyAssignments);
+router.delete('/:id', verifyToken(['admin', 'superadmin', 'faculty']), deleteAssignment);
 
 // Student and Parent routes
 router.get('/student', verifyToken(['student', 'parent', 'admin', 'superadmin']), getStudentAssignments);

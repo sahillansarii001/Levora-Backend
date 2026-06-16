@@ -11,6 +11,7 @@ const courseSchema = new mongoose.Schema({
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   facultyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Faculty' },
   batches: [{ type: String }], // e.g. ['11th', '12th', 'Foundation']
+  totalStudents: { type: Number, default: 0 },
 }, {
   timestamps: true,
 });

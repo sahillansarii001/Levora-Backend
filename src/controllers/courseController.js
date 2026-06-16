@@ -3,12 +3,13 @@ import {  successResponse, errorResponse, paginatedResponse  } from '../utils/re
 
 const getCourses = async (req, res) => {
   try {
-    const { category, mode, batch, page = 1, limit = 10 } = req.query;
+    const { category, mode, batch, facultyId, page = 1, limit = 10 } = req.query;
     const where = { status: 'active' };
 
     if (category) where.category = category;
     if (mode) where.mode = mode;
     if (batch) where.batches = batch; // MongoDB handles array inclusion automatically
+    if (facultyId) where.facultyId = facultyId;
 
     const offset = (page - 1) * limit;
     
@@ -17,6 +18,7 @@ const getCourses = async (req, res) => {
       .skip(offset)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 })
+      .populate('facultyId', 'name email')
       .lean();
 
     // Attach completed lessons count from LectureLog
@@ -31,7 +33,13 @@ const getCourses = async (req, res) => {
         
       course.completedLessons = logsCount;
       course.totalLessons = course.totalLessons || 30; // Default to 30 if not specified
-      course.facultyName = latestLog?.facultyId?.name || null;
+      
+      // Prefer the directly assigned facultyName if available, else fallback to latestLog
+      if (course.facultyId && course.facultyId.name) {
+        course.facultyName = course.facultyId.name;
+      } else {
+        course.facultyName = latestLog?.facultyId?.name || null;
+      }
     }
 
     paginatedResponse(res, courses, page, limit, count, 'Courses fetched successfully');
@@ -57,7 +65,7 @@ const getCourseBySlug = async (req, res) => {
 
 const createCourse = async (req, res) => {
   try {
-    const { title, courseCode, description, category, duration, fee, mode, batches } = req.body;
+    const { title, courseCode, description, category, duration, fee, mode, batches, facultyId, totalStudents } = req.body;
 
     const existingCourse = await Course.findOne({ courseCode });
     if (existingCourse) {
@@ -73,6 +81,8 @@ const createCourse = async (req, res) => {
       fee,
       mode,
       batches: batches || [],
+      facultyId: facultyId || null,
+      totalStudents: totalStudents || 0,
     });
 
     successResponse(res, 'Course created successfully', course, 201);

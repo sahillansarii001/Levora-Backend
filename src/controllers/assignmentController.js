@@ -1,5 +1,6 @@
 import Assignment from '../models/Assignment.js';
 import Student from '../models/Student.js';
+import Course from '../models/Course.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
 import mongoose from 'mongoose';
 
@@ -12,14 +13,20 @@ export const createAssignment = async (req, res) => {
       return errorResponse(res, 'Title, subject, class, and due date are required', [], 400);
     }
 
-    const assignment = new Assignment({
+    const assignmentData = {
       title,
       description,
       subject,
       className,
       dueDate,
       fileUrl,
-    });
+    };
+
+    if (req.user && req.user.role === 'faculty') {
+      assignmentData.facultyId = req.user.id;
+    }
+
+    const assignment = new Assignment(assignmentData);
 
     await assignment.save();
     successResponse(res, 'Assignment created successfully', assignment, 201);
@@ -30,7 +37,7 @@ export const createAssignment = async (req, res) => {
 
 export const getAdminAssignments = async (req, res) => {
   try {
-    const assignments = await Assignment.find().sort({ createdAt: -1 });
+    const assignments = await Assignment.find().sort({ createdAt: -1 }).populate('submissions.studentId', 'name');
     successResponse(res, 'Assignments fetched successfully', assignments);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -45,6 +52,48 @@ export const deleteAssignment = async (req, res) => {
       return errorResponse(res, 'Assignment not found', [], 404);
     }
     successResponse(res, 'Assignment deleted successfully', null);
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
+// Faculty endpoints
+export const getFacultyAssignments = async (req, res) => {
+  try {
+    const facultyId = req.user.id;
+    const assignments = await Assignment.find({ facultyId })
+      .sort({ createdAt: -1 })
+      .populate('submissions.studentId', 'name');
+    
+    // Fetch courses for this faculty to get total students
+    const courses = await Course.find({ facultyId });
+    
+    // Add submissions stats
+    const mappedAssignments = assignments.map(a => {
+      const completedSubmissions = a.submissions.filter(s => s.status === 'completed');
+      const submissions = completedSubmissions.length;
+      const submittedStudents = completedSubmissions.map(s => s.studentId ? s.studentId.name : 'Unknown');
+      
+      // Try to find matching course by title
+      const course = courses.find(c => c.title === a.subject);
+      const total = course ? (course.totalStudents || 0) : 0;
+      
+      return {
+        _id: a._id,
+        title: a.title,
+        description: a.description,
+        subject: a.subject,
+        dueDate: a.dueDate,
+        fileUrl: a.fileUrl,
+        class: a.className,
+        status: a.status,
+        submissions,
+        submittedStudents,
+        total
+      };
+    });
+
+    successResponse(res, 'Faculty assignments fetched successfully', mappedAssignments);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }

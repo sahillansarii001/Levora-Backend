@@ -1,11 +1,25 @@
 import express from 'express';
 import { getMaterials, createMaterial } from '../controllers/materialController.js';
 import { verifyToken } from '../middleware/auth.js';
+import multer from 'multer';
+import path from 'path';
 
 const router = express.Router();
 
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/uploads/');
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'material-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
+
 router.get('/', verifyToken(['student', 'admin', 'faculty', 'superadmin', 'parent']), getMaterials);
-router.post('/', verifyToken(['admin', 'faculty', 'superadmin']), createMaterial);
+router.post('/', verifyToken(['admin', 'faculty', 'superadmin']), upload.single('file'), createMaterial);
 
 // Keep the rest of the placeholders for now if needed, or remove them.
 router.get('/:id', (req, res) => {

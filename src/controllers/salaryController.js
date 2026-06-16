@@ -69,4 +69,14 @@ const deleteSalaryRecord = async (req, res) => {
   }
 };
 
-export { getSalaryRecords, createSalaryRecord, updateSalaryRecord, deleteSalaryRecord };
+const getMySalary = async (req, res) => {
+  try {
+    const facultyId = req.user.id;
+    const records = await Salary.find({ facultyId }).sort({ paymentDate: -1 });
+    successResponse(res, 'Salary records fetched successfully', records);
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
+export { getSalaryRecords, createSalaryRecord, updateSalaryRecord, deleteSalaryRecord, getMySalary };
