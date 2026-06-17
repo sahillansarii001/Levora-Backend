@@ -22,6 +22,8 @@ const studentSchema = new mongoose.Schema({
   totalFees: { type: Number, default: 0 },
   admissionDate: { type: Date, default: Date.now },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  isSubscribed: { type: Boolean, default: false },
+  subscriptionExpiry: { type: Date },
 }, {
   timestamps: true,
 });

@@ -66,4 +66,11 @@ router.post('/results', requireSuperAdmin, cmsController.createResult);
 router.put('/results/:id', requireSuperAdmin, cmsController.updateResult);
 router.delete('/results/:id', requireSuperAdmin, cmsController.deleteResult);
 
+import * as testimonialController from '../controllers/testimonialController.js';
+// Testimonials
+router.get('/testimonials', testimonialController.getTestimonials); // Public
+router.post('/testimonials', requireSuperAdmin, testimonialController.createTestimonial);
+router.put('/testimonials/:id', requireSuperAdmin, testimonialController.updateTestimonial);
+router.delete('/testimonials/:id', requireSuperAdmin, testimonialController.deleteTestimonial);
+
 export default router;

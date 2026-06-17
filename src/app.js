@@ -52,11 +52,14 @@ import lectureLogRoutes from './routes/lectureLog.js';
 import scheduleRoutes from './routes/schedule.js';
 import assignmentRoutes from './routes/assignments.js';
 import examResultRoutes from './routes/examResults.js';
+import testimonialRoutes from './routes/testimonials.js';
+import studentAuthRoutes from './routes/studentAuth.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
 
 // API Routes
+app.use('/api/auth/student', studentAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/courses', courseRoutes);
@@ -79,6 +82,7 @@ app.use('/api/lecture-logs', lectureLogRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/exam-results', examResultRoutes);
+app.use('/api/testimonials', testimonialRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

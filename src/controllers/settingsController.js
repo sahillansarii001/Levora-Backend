@@ -25,7 +25,15 @@ export const getPublicSettings = async (req, res) => {
       admissionsOpen: settings.admissionsOpen,
       academyName: settings.academyName,
       contactEmail: settings.contactEmail,
-      contactPhone: settings.contactPhone
+      contactPhone: settings.contactPhone,
+      address: settings.address,
+      visitingHours: settings.visitingHours,
+      facebookUrl: settings.facebookUrl,
+      instagramUrl: settings.instagramUrl,
+      youtubeUrl: settings.youtubeUrl,
+      twitterUrl: settings.twitterUrl,
+      trustBadge1: settings.trustBadge1,
+      trustBadge2: settings.trustBadge2
     });
   } catch (error) {
     errorResponse(res, error.message, [], 500);

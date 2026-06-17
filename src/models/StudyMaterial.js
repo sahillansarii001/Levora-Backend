@@ -9,7 +9,7 @@ const studyMaterialSchema = new mongoose.Schema({
   board: { type: String, enum: ['CBSE', 'ICSE', 'State', 'All'], default: 'All' },
   category: { 
     type: String, 
-    enum: ['notes', 'pyqs', 'handwritten', 'formula', 'worksheet', 'assignment'],
+    enum: ['notes', 'pyqs', 'handwritten', 'formula', 'worksheet', 'assignment', 'textbook'],
     required: true 
   },
   fileUrl: { type: String, required: true },

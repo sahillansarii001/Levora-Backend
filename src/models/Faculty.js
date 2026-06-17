@@ -10,6 +10,7 @@ const facultySchema = new mongoose.Schema({
   subject: { type: String, required: true },
   qualification: { type: String },
   experience: { type: Number },
+  shortIntro: { type: String },
   profileImage: { type: String },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   role: { type: String, enum: ['faculty', 'head'], default: 'faculty' },
