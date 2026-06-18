@@ -10,7 +10,7 @@ A production-ready Express.js REST API for LEVORA ACADEMY, a premium Indian EdTe
 Server/
 ├── src/
 │   ├── config/
-│   │   ├── database.js        # Sequelize configuration
+│   │   ├── database.js        # MongoDB configuration
 │   │   ├── cloudinary.js      # Cloudinary setup
 │   │   ├── razorpay.js        # Razorpay setup
 │   │   └── nodemailer.js      # Email configuration
@@ -92,7 +92,7 @@ Server/
 
 ### Prerequisites
 - Node.js (v14+)
-- PostgreSQL (v12+)
+- MongoDB (v4.4+)
 - npm or yarn
 
 ### Installation
@@ -117,12 +117,7 @@ Server/
    NODE_ENV=development
    
    # Database
-   DATABASE_URL=postgresql://user:password@localhost:5432/levora_academy
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=levora_academy
-   DB_USER=postgres
-   DB_PASSWORD=password
+   MONGO_URI=mongodb://localhost:27017/levora_academy
    
    # JWT
    JWT_SECRET=your_jwt_secret_key
@@ -151,9 +146,9 @@ Server/
    FRONTEND_URL=http://localhost:3000
    ```
 
-4. **Create PostgreSQL database**
-   ```sql
-   CREATE DATABASE levora_academy;
+4. **Ensure MongoDB is running**
+   ```bash
+   # Make sure your MongoDB service is active
    ```
 
 5. **Start the server**
@@ -177,6 +172,8 @@ Server/
 - `POST /api/auth/admin/login` - Admin login
 - `POST /api/auth/send-otp` - Send OTP
 - `POST /api/auth/verify-otp` - Verify OTP
+- `POST /api/auth/forgot-password` - Request a password reset OTP
+- `POST /api/auth/reset-password` - Reset password using OTP
 
 ### Course Routes (`/api/courses`)
 - `GET /api/courses` - Get all courses (public)
@@ -297,7 +294,7 @@ Authorization: Bearer <access_token>
 - CORS protection
 - Helmet.js for HTTP headers
 - Multer file upload validation
-- SQL injection prevention via Sequelize ORM
+- NoSQL injection prevention via Mongoose ODM
 - HTTPS-ready configuration
 
 ---
@@ -313,18 +310,15 @@ npm run db:migrate # Run migrations
 npm run db:seed    # Seed database
 ```
 
-### Database Migrations
-```bash
-npx sequelize-cli db:migrate
-npx sequelize-cli db:migrate:undo:all
-```
+### Database
+Mongoose handles schema creation automatically upon application start.
 
 ---
 
 ## 📦 Key Dependencies
 
 - **express** - Web framework
-- **sequelize** - ORM for PostgreSQL
+- **mongoose** - ODM for MongoDB
 - **jsonwebtoken** - JWT authentication
 - **bcryptjs** - Password hashing
 - **cloudinary** - Image hosting
@@ -349,9 +343,9 @@ ADMIN_PASSWORD=[admin password]
 ```
 
 ### Database
-Update PostgreSQL connection string for production:
+Update MongoDB connection string for production:
 ```
-DATABASE_URL=postgresql://user:password@prod-server:5432/levora_academy
+MONGO_URI=mongodb://prod-server:27017/levora_academy
 ```
 
 ### Starting Server
@@ -380,9 +374,9 @@ curl -X POST http://localhost:5000/api/auth/student/login \
 ## ⚠️ Common Issues
 
 ### Database Connection Error
-- Verify PostgreSQL is running
-- Check `DATABASE_URL` in `.env`
-- Ensure database exists
+- Verify MongoDB is running
+- Check `MONGO_URI` in `.env`
+- Ensure database is accessible
 
 ### Port Already in Use
 ```bash
@@ -403,7 +397,7 @@ kill -9 <PID>
 For issues or questions:
 1. Check error logs in console
 2. Verify `.env` configuration
-3. Check PostgreSQL connection
+3. Check MongoDB connection
 4. Review API documentation
 
 ---

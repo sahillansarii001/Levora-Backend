@@ -10,7 +10,7 @@ Before starting, ensure you have installed:
 
 - **Node.js** (v14 or higher) - [Download](https://nodejs.org/)
 - **npm** (comes with Node.js) or **yarn**
-- **PostgreSQL** (v12 or higher) - [Download](https://www.postgresql.org/download/)
+- **MongoDB** (v4.4 or higher) - [Download](https://www.mongodb.com/try/download/community)
 - **Git** (optional) - [Download](https://git-scm.com/)
 - **Postman** (for API testing) - [Download](https://www.postman.com/)
 
@@ -18,7 +18,7 @@ Before starting, ensure you have installed:
 ```bash
 node --version      # Should show v14.0.0 or higher
 npm --version       # Should show npm version
-psql --version      # Should show PostgreSQL version
+mongod --version    # Should show MongoDB version
 ```
 
 ---
@@ -56,24 +56,25 @@ added 250+ packages in 45s
 
 ## 🗄️ Step 2: Database Setup
 
-### 2.1 Create PostgreSQL Database
+### 2.1 Start MongoDB Service
 
-#### On Windows (Using pgAdmin)
-1. Open **pgAdmin 4**
-2. Right-click on **Databases** → Create → Database
-3. Enter name: `levora_academy`
-4. Click **Save**
+#### On Windows
+1. Open Services (services.msc)
+2. Find **MongoDB Server**
+3. Ensure the status is **Running**
 
 #### On macOS/Linux (Using Terminal)
 ```bash
-psql -U postgres
-CREATE DATABASE levora_academy;
-\q
+# macOS
+brew services start mongodb-community
+
+# Linux
+sudo systemctl start mongod
 ```
 
-### 2.2 Verify Database Creation
+### 2.2 Verify MongoDB is Running
 ```bash
-psql -U postgres -l | grep levora_academy
+mongosh --eval 'db.runCommand({ connectionStatus: 1 })'
 ```
 
 ---
@@ -95,12 +96,7 @@ PORT=5000
 NODE_ENV=development
 
 # ===== DATABASE CONFIGURATION =====
-DATABASE_URL=postgresql://postgres:password@localhost:5432/levora_academy
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=levora_academy
-DB_USER=postgres
-DB_PASSWORD=your_postgres_password
+MONGO_URI=mongodb://localhost:27017/levora_academy
 
 # ===== JWT CONFIGURATION =====
 JWT_SECRET=your_super_secret_jwt_key_change_in_production_12345
@@ -151,9 +147,9 @@ MAX_OTP_ATTEMPTS=3
 
 ### 3.3 Important Configuration Details
 
-#### Database Password
-- Replace `your_postgres_password` with your PostgreSQL password
-- Default password during installation is often `postgres` or `password`
+#### MongoDB URI
+- Update the `MONGO_URI` if your MongoDB runs on a different port or requires authentication.
+- For remote databases like MongoDB Atlas, use the connection string provided in your dashboard.
 
 #### JWT Secrets
 - Generate secure strings (at least 32 characters)
@@ -249,21 +245,21 @@ GET http://localhost:5000/api/courses
 
 ## 📊 Step 6: Verify Database
 
-### 6.1 Connect to PostgreSQL
+### 6.1 Connect to MongoDB
 ```bash
-psql -U postgres -d levora_academy
+mongosh "mongodb://localhost:27017/levora_academy"
 ```
 
-### 6.2 View Created Tables
-```sql
-\dt              -- List all tables
-SELECT * FROM students;
-SELECT * FROM courses;
+### 6.2 View Collections and Data
+```javascript
+show collections;
+db.users.find();
+db.courses.find();
 ```
 
-### 6.3 Exit PostgreSQL
-```sql
-\q
+### 6.3 Exit MongoDB Shell
+```javascript
+exit
 ```
 
 ---
@@ -350,20 +346,12 @@ POST http://localhost:5000/api/auth/student/register
 
 ## 🐛 Troubleshooting
 
-### Issue: "Error: connect ECONNREFUSED 127.0.0.1:5432"
-**Solution:** PostgreSQL is not running
-- Start PostgreSQL service
-- On Windows: Open Services, find PostgreSQL, and start it
-- On macOS: `brew services start postgresql`
-- On Linux: `sudo service postgresql start`
-
-### Issue: "Error: database "levora_academy" does not exist"
-**Solution:** Create the database first
-```bash
-psql -U postgres
-CREATE DATABASE levora_academy;
-\q
-```
+### Issue: "MongoNetworkError: failed to connect to server"
+**Solution:** MongoDB is not running
+- Start MongoDB service
+- On Windows: Open Services, find MongoDB Server, and start it
+- On macOS: `brew services start mongodb-community`
+- On Linux: `sudo systemctl start mongod`
 
 ### Issue: "Port 5000 is already in use"
 **Solution:** Change PORT in .env or kill the process using the port
@@ -408,7 +396,7 @@ git push heroku main
 
 ### Deploy to AWS/DigitalOcean
 1. Create a droplet/instance
-2. Install Node.js and PostgreSQL
+2. Install Node.js and MongoDB
 3. Clone repository
 4. Setup environment variables
 5. Install PM2: `npm install -g pm2`
@@ -421,7 +409,7 @@ git push heroku main
 - [Express.js Docs](https://expressjs.com/)
 - [Sequelize Documentation](https://sequelize.org/)
 - [JWT Explained](https://jwt.io/)
-- [PostgreSQL Docs](https://www.postgresql.org/docs/)
+- [MongoDB Docs](https://www.mongodb.com/docs/)
 - [Postman Learning Center](https://learning.postman.com/)
 
 ---
@@ -429,8 +417,8 @@ git push heroku main
 ## ✅ Checklist
 
 - [ ] Node.js installed
-- [ ] PostgreSQL installed and running
-- [ ] Database created
+- [ ] MongoDB installed and running
+- [ ] Database running
 - [ ] Dependencies installed (`npm install`)
 - [ ] `.env` file configured
 - [ ] Server started (`npm run dev`)
@@ -445,7 +433,7 @@ git push heroku main
 
 1. Check logs in terminal for error messages
 2. Verify all `.env` values are correct
-3. Ensure PostgreSQL is running
+3. Ensure MongoDB is running
 4. Check that ports are not blocked by firewall
 5. Review API documentation in `README.md`
 
