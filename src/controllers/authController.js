@@ -253,7 +253,21 @@ export const sendOTPCode = async (req, res) => {
 };
 
 export const verifyOTPCode = async (req, res) => {
-  res.send('Not implemented yet');
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return errorResponse(res, 'Email and OTP are required', [], 400);
+    }
+    
+    const otpVerification = await verifyOTP(email, otp);
+    if (!otpVerification.valid) {
+      return errorResponse(res, otpVerification.message, [], 400);
+    }
+    
+    successResponse(res, 'OTP verified successfully', {});
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
 };
 
 
@@ -352,5 +366,65 @@ export const refreshToken = async (req, res) => {
     successResponse(res, 'Token refreshed successfully', { accessToken: newAccessToken, token: newAccessToken });
   } catch (error) {
     errorResponse(res, 'Invalid or expired refresh token', [], 401);
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return errorResponse(res, 'Email is required', [], 400);
+    }
+
+    const student = await Student.findOne({ email });
+    const parent = await Parent.findOne({ email });
+    const faculty = await Faculty.findOne({ email });
+
+    if (!student && !parent && !faculty) {
+      return errorResponse(res, 'No account found with this email', [], 404);
+    }
+
+    const otp = await generateOTP(email);
+    console.log(`[DEV MODE] Forgot Password OTP for ${email} is: ${otp}`);
+    
+    const emailResult = await sendEmail(email, 'Your Levora Academy Password Reset Code', otpEmail(otp));
+
+    if (emailResult.success) {
+      successResponse(res, 'Password reset code sent successfully', { email });
+    } else {
+      errorResponse(res, 'Failed to send reset code email', [], 500);
+    }
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return errorResponse(res, 'Email, reset code, and new password are required', [], 400);
+    }
+
+    const otpVerification = await verifyOTP(email, otp);
+    if (!otpVerification.valid) {
+      return errorResponse(res, otpVerification.message, [], 400);
+    }
+
+    let user = await Student.findOne({ email });
+    if (!user) user = await Parent.findOne({ email });
+    if (!user) user = await Faculty.findOne({ email });
+
+    if (!user) {
+      return errorResponse(res, 'No account found with this email', [], 404);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    successResponse(res, 'Password has been reset successfully', {});
+  } catch (error) {
+    errorResponse(res, error.message, [], 500);
   }
 };
