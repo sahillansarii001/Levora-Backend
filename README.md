@@ -67,7 +67,6 @@ Server/
 │   │   ├── generateStudentId.js
 │   │   ├── generateOTP.js
 │   │   ├── sendEmail.js
-│   │   ├── sendSMS.js
 │   │   ├── generateQR.js
 │   │   ├── razorpay.js
 │   │   └── responseHelper.js
@@ -136,11 +135,6 @@ Server/
    SMTP_HOST=smtp.gmail.com
    SMTP_USER=your_email@gmail.com
    SMTP_PASS=your_app_password
-   
-   # SMS
-   TWILIO_SID=your_twilio_sid
-   TWILIO_AUTH_TOKEN=your_auth_token
-   TWILIO_PHONE=+1234567890
    
    # Frontend
    FRONTEND_URL=http://localhost:3000
@@ -324,7 +318,6 @@ Mongoose handles schema creation automatically upon application start.
 - **cloudinary** - Image hosting
 - **razorpay** - Payment gateway
 - **nodemailer** - Email service
-- **twilio** - SMS/OTP service
 - **multer** - File uploads
 - **helmet** - HTTP headers
 - **cors** - CORS middleware

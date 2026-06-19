@@ -43,7 +43,6 @@ This will install all required packages from `package.json`:
 - Cloudinary
 - Razorpay
 - Nodemailer
-- Twilio
 - And more...
 
 **Expected Output:**
@@ -128,12 +127,6 @@ SMTP_PASS=your_app_password
 SENDER_EMAIL=noreply@levoraacademy.com
 SENDER_NAME=LEVORA ACADEMY
 
-# ===== SMS CONFIGURATION =====
-# Sign up at https://www.twilio.com
-TWILIO_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE=+1234567890
-
 # ===== FRONTEND CONFIGURATION =====
 FRONTEND_URL=http://localhost:3000
 
@@ -165,7 +158,6 @@ MAX_OTP_ATTEMPTS=3
 These are optional for testing:
 - **Cloudinary** - [Sign up free](https://cloudinary.com/users/register/free)
 - **Razorpay** - [Get sandbox keys](https://dashboard.razorpay.com/app/keys)
-- **Twilio** - [Free trial](https://www.twilio.com/try-twilio)
 
 ---
 
