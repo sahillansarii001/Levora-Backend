@@ -112,10 +112,19 @@ export const getStudentAssignments = async (req, res) => {
       if (!student) return errorResponse(res, 'Student not found', [], 404);
       className = student.className;
     } else if (req.user.role === 'parent') {
-      const parent = await mongoose.model('Parent').findById(req.user.id).populate('studentId');
-      if (!parent || !parent.studentId) return errorResponse(res, 'Linked student not found', [], 404);
-      studentId = parent.studentId._id;
-      className = parent.studentId.className;
+      const parent = await mongoose.model('Parent').findById(req.user.id).populate('childrenIds');
+      if (!parent) return errorResponse(res, 'Parent not found', [], 404);
+      
+      let child = null;
+      if (parent.childrenIds && parent.childrenIds.length > 0) {
+        child = parent.childrenIds[0];
+      } else if (parent.parentOf) {
+        child = await mongoose.model('Student').findOne({ studentId: parent.parentOf });
+      }
+
+      if (!child) return errorResponse(res, 'Linked student not found', [], 404);
+      studentId = child._id;
+      className = child.className;
     } else if (['admin', 'superadmin'].includes(req.user.role)) {
       // Allow admin/superadmin to preview the student assignments page
       const assignments = await Assignment.find({ status: 'active' }).sort({ dueDate: 1 }).limit(10);
