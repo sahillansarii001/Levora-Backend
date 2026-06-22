@@ -1,6 +1,5 @@
-import { Attendance, Student, Faculty } from '../models.js';
+import prisma from '../config/prisma.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/responseHelper.js';
-import mongoose from 'mongoose';
 
 const getAttendance = async (req, res) => {
   try {
@@ -9,25 +8,13 @@ const getAttendance = async (req, res) => {
 
     const filter = {};
     if (userType) filter.userType = userType;
-    if (studentId) filter.studentId = studentId;
-    if (facultyId) filter.facultyId = facultyId;
+    if (studentId && studentId !== 'undefined') filter.studentId = studentId;
+    if (facultyId && facultyId !== 'undefined') filter.facultyId = facultyId;
 
-    // Security check: Force students to only see their own records
     if (req.user && req.user.role === 'student') {
       filter.userType = 'student';
-      try {
-        filter.studentId = new mongoose.Types.ObjectId(req.user.id);
-      } catch(e) {
-        filter.studentId = req.user.id;
-      }
-    } else if (studentId && studentId !== 'undefined') {
-      try {
-        filter.studentId = new mongoose.Types.ObjectId(studentId);
-      } catch(e) {
-        filter.studentId = studentId;
-      }
+      filter.studentId = req.user.id;
     } else if (studentId === 'undefined' && req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
-      // In Admin preview, if studentId is undefined, show global records
       delete filter.studentId;
     }
 
@@ -35,21 +22,27 @@ const getAttendance = async (req, res) => {
       filter.date = new Date(date);
     } else if (fromDate || toDate) {
       filter.date = {};
-      if (fromDate) filter.date.$gte = new Date(fromDate);
+      if (fromDate) filter.date.gte = new Date(fromDate);
       if (toDate) {
         let endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        filter.date.$lte = endDate;
+        filter.date.lte = endDate;
       }
     }
 
-    const count = await Attendance.countDocuments(filter);
-    const records = await Attendance.find(filter)
-      .populate('studentId', 'name studentId className batch')
-      .populate('facultyId', 'name email subject')
-      .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ date: -1 });
+    const count = await prisma.attendance.count({ where: filter });
+    
+    // Using simple query since raw studentId/facultyId will be returned by default in Prisma.
+    // If we wanted to "populate", we would need relationships setup in schema.prisma.
+    // Since there are no relations defined for attendance -> student/faculty in schema.prisma yet,
+    // we'll fetch them manually if needed or just return raw ids.
+    // To keep it simple, we'll return raw for now.
+    const records = await prisma.attendance.findMany({
+      where: filter,
+      skip,
+      take: parseInt(limit),
+      orderBy: { date: 'desc' }
+    });
 
     paginatedResponse(res, records, page, limit, count, 'Attendance records fetched successfully');
   } catch (error) {
@@ -61,16 +54,17 @@ const createAttendance = async (req, res) => {
   try {
     const { userType, studentId, facultyId, date, status, remarks } = req.body;
 
-    const newRecord = new Attendance({
-      userType,
-      studentId: userType === 'student' ? studentId : undefined,
-      facultyId: userType === 'faculty' ? facultyId : undefined,
-      date,
-      status,
-      remarks
+    const newRecord = await prisma.attendance.create({
+      data: {
+        userType,
+        studentId: userType === 'student' ? studentId : null,
+        facultyId: userType === 'faculty' ? facultyId : null,
+        date: date ? new Date(date) : new Date(),
+        status,
+        remarks: remarks || ''
+      }
     });
 
-    await newRecord.save();
     successResponse(res, 'Attendance marked successfully', newRecord, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -80,13 +74,20 @@ const createAttendance = async (req, res) => {
 const updateAttendance = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
 
-    const record = await Attendance.findByIdAndUpdate(id, updates, { new: true });
-    if (!record) return errorResponse(res, 'Record not found', [], 404);
+    if (updates.date) updates.date = new Date(updates.date);
+
+    const record = await prisma.attendance.update({
+      where: { id },
+      data: updates
+    });
 
     successResponse(res, 'Attendance updated successfully', record);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Record not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };
@@ -94,11 +95,14 @@ const updateAttendance = async (req, res) => {
 const deleteAttendance = async (req, res) => {
   try {
     const { id } = req.params;
-    const record = await Attendance.findByIdAndDelete(id);
-    if (!record) return errorResponse(res, 'Record not found', [], 404);
+    
+    await prisma.attendance.delete({ where: { id } });
 
     successResponse(res, 'Attendance deleted successfully', {});
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Record not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };

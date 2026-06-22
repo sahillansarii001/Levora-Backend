@@ -1,4 +1,4 @@
-import OTPRecord from '../models/OTPRecord.js';
+import prisma from '../config/prisma.js';
 
 export const generateOTP = async (email) => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -6,19 +6,28 @@ export const generateOTP = async (email) => {
   const expiresAt = new Date(Date.now() + (process.env.OTP_EXPIRY || 600) * 1000);
 
   // Remove any existing unverified OTP records for this email to prevent clutter
-  await OTPRecord.deleteMany({ email, verified: false });
+  await prisma.oTPRecord.deleteMany({ 
+    where: { 
+      email, 
+      verified: false 
+    } 
+  });
 
-  await OTPRecord.create({
-    email,
-    otp,
-    expiresAt,
+  await prisma.oTPRecord.create({
+    data: {
+      email,
+      otp,
+      expiresAt,
+    }
   });
 
   return otp;
 };
 
 export const verifyOTP = async (email, otp) => {
-  const record = await OTPRecord.findOne({ email, otp });
+  const record = await prisma.oTPRecord.findFirst({ 
+    where: { email, otp } 
+  });
 
   if (!record) {
     return { valid: false, message: 'Invalid OTP' };
@@ -32,8 +41,10 @@ export const verifyOTP = async (email, otp) => {
     return { valid: false, message: 'Maximum attempts exceeded. Please request a new OTP.' };
   }
 
-  record.verified = true;
-  await record.save();
+  await prisma.oTPRecord.update({
+    where: { id: record.id },
+    data: { verified: true }
+  });
 
   return { valid: true };
 };

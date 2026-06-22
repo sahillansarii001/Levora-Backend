@@ -1,9 +1,4 @@
-import Notice from '../models/Notice.js';
-import SiteContent from '../models/SiteContent.js';
-import Course from '../models/Course.js';
-import Faculty from '../models/Faculty.js';
-import StudyMaterial from '../models/StudyMaterial.js';
-import Result from '../models/Result.js';
+import prisma from '../config/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
 import { logActivity } from './activityController.js';
 
@@ -12,14 +7,14 @@ import { logActivity } from './activityController.js';
 // ==========================================
 export const getAllNotices = async (req, res) => {
   try {
-    const notices = await Notice.find().sort({ createdAt: -1 });
+    const notices = await prisma.notice.findMany({ orderBy: { createdAt: 'desc' } });
     successResponse(res, 'Notices fetched', notices);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const createNotice = async (req, res) => {
   try {
-    const notice = await Notice.create(req.body);
+    const notice = await prisma.notice.create({ data: req.body });
     await logActivity('content', 'New Notice Created', 'A new notice was added to the CMS.');
     successResponse(res, 'Notice created', notice, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -27,14 +22,17 @@ export const createNotice = async (req, res) => {
 
 export const updateNotice = async (req, res) => {
   try {
-    const notice = await Notice.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const notice = await prisma.notice.update({
+      where: { id: req.params.id },
+      data: req.body
+    });
     successResponse(res, 'Notice updated', notice);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const deleteNotice = async (req, res) => {
   try {
-    await Notice.findByIdAndDelete(req.params.id);
+    await prisma.notice.delete({ where: { id: req.params.id } });
     await logActivity('content', 'Notice Deleted', 'A notice was removed from the CMS.');
     successResponse(res, 'Notice deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -42,12 +40,15 @@ export const deleteNotice = async (req, res) => {
 
 // ==========================================
 // WEBSITE CONTENT
-// Get all content, optionally filtered by page
+// ==========================================
 export const getContent = async (req, res) => {
   try {
     const { page } = req.query;
     const filter = page ? { page } : {};
-    const content = await SiteContent.find(filter).sort({ createdAt: 1 });
+    const content = await prisma.siteContent.findMany({
+      where: filter,
+      orderBy: { createdAt: 'asc' }
+    });
     
     // Transform into key-value map for easier frontend consumption
     const contentMap = {};
@@ -61,14 +62,15 @@ export const getContent = async (req, res) => {
   }
 };
 
-// Create a new content block
 export const createContent = async (req, res) => {
   try {
     const { page, section, key, value, type } = req.body;
     if (!page || !key || !value) {
       return errorResponse(res, 'Page, key, and value are required', [], 400);
     }
-    const content = await SiteContent.create({ page, section: section || 'general', key, value, type: type || 'text' });
+    const content = await prisma.siteContent.create({
+      data: { page, section: section || 'general', key, value, type: type || 'text' }
+    });
     await logActivity('content', 'New Content Created', `A new content block was added to the CMS: ${key}.`);
     successResponse(res, 'Content created successfully', content, 201);
   } catch (error) {
@@ -76,7 +78,6 @@ export const createContent = async (req, res) => {
   }
 };
 
-// Update multiple content blocks at once
 export const updateContent = async (req, res) => {
   try {
     const { page, updates } = req.body; // Array of { key, value }
@@ -87,26 +88,31 @@ export const updateContent = async (req, res) => {
 
     if (page) {
       const updateKeys = updates.map(u => u.key);
-      await SiteContent.deleteMany({ page, key: { $nin: updateKeys } });
+      await prisma.siteContent.deleteMany({
+        where: {
+          page,
+          key: { notIn: updateKeys }
+        }
+      });
     }
 
-    const baseDate = Date.now();
-    const bulkOps = updates.map((update, index) => ({
-      updateOne: {
-        filter: { key: update.key },
-        update: { 
-          $set: { 
-            value: update.value,
-            createdAt: new Date(baseDate + index * 1000)
-          },
-          $setOnInsert: { page: update.page || 'homepage', section: update.section || 'general', type: 'html' }
-        },
-        upsert: true // Allow upserting
-      }
-    }));
+    // Prisma doesn't have a direct equivalent to bulkWrite for multiple different upserts, so we use transaction
+    const updatePromises = updates.map(update => {
+      return prisma.siteContent.upsert({
+        where: { key: update.key },
+        update: { value: update.value },
+        create: {
+          key: update.key,
+          value: update.value,
+          page: update.page || 'homepage',
+          section: update.section || 'general',
+          type: 'html'
+        }
+      });
+    });
 
-    if (bulkOps.length > 0) {
-      await SiteContent.collection.bulkWrite(bulkOps);
+    if (updatePromises.length > 0) {
+      await prisma.$transaction(updatePromises);
       await logActivity('content', 'Content Updated', 'Content blocks were updated in the CMS.');
     }
 
@@ -121,14 +127,14 @@ export const updateContent = async (req, res) => {
 // ==========================================
 export const getCourses = async (req, res) => {
   try {
-    const courses = await Course.find().sort({ createdAt: -1 });
+    const courses = await prisma.course.findMany({ orderBy: { createdAt: 'desc' } });
     successResponse(res, 'Courses fetched', courses);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const createCourse = async (req, res) => {
   try {
-    const course = await Course.create(req.body);
+    const course = await prisma.course.create({ data: req.body });
     await logActivity('content', 'New Course Created', 'A new course was added to the CMS.');
     successResponse(res, 'Course created', course, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -136,14 +142,17 @@ export const createCourse = async (req, res) => {
 
 export const updateCourse = async (req, res) => {
   try {
-    const course = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const course = await prisma.course.update({
+      where: { id: req.params.id },
+      data: req.body
+    });
     successResponse(res, 'Course updated', course);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const deleteCourse = async (req, res) => {
   try {
-    await Course.findByIdAndDelete(req.params.id);
+    await prisma.course.delete({ where: { id: req.params.id } });
     await logActivity('content', 'Course Deleted', 'A course was removed from the CMS.');
     successResponse(res, 'Course deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -154,14 +163,14 @@ export const deleteCourse = async (req, res) => {
 // ==========================================
 export const getFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.find().sort({ createdAt: -1 });
+    const faculty = await prisma.faculty.findMany({ orderBy: { createdAt: 'desc' } });
     successResponse(res, 'Faculty fetched', faculty);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const createFaculty = async (req, res) => {
   try {
-    const faculty = await Faculty.create(req.body);
+    const faculty = await prisma.faculty.create({ data: req.body });
     await logActivity('content', 'New Faculty Created', 'A new faculty member was added to the CMS.');
     successResponse(res, 'Faculty created', faculty, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -169,17 +178,21 @@ export const createFaculty = async (req, res) => {
 
 export const updateFaculty = async (req, res) => {
   try {
-    if (req.body.password && req.body.password.trim() === '') {
-      delete req.body.password; // Don't update password if empty
+    const dataToUpdate = { ...req.body };
+    if (dataToUpdate.password && dataToUpdate.password.trim() === '') {
+      delete dataToUpdate.password;
     }
-    const faculty = await Faculty.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const faculty = await prisma.faculty.update({
+      where: { id: req.params.id },
+      data: dataToUpdate
+    });
     successResponse(res, 'Faculty updated', faculty);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const deleteFaculty = async (req, res) => {
   try {
-    await Faculty.findByIdAndDelete(req.params.id);
+    await prisma.faculty.delete({ where: { id: req.params.id } });
     await logActivity('content', 'Faculty Deleted', 'A faculty member was removed from the CMS.');
     successResponse(res, 'Faculty deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -190,14 +203,14 @@ export const deleteFaculty = async (req, res) => {
 // ==========================================
 export const getMaterials = async (req, res) => {
   try {
-    const materials = await StudyMaterial.find().sort({ createdAt: -1 });
+    const materials = await prisma.studyMaterial.findMany({ orderBy: { createdAt: 'desc' } });
     successResponse(res, 'Materials fetched', materials);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const createMaterial = async (req, res) => {
   try {
-    const material = await StudyMaterial.create(req.body);
+    const material = await prisma.studyMaterial.create({ data: req.body });
     await logActivity('content', 'New Material Created', 'A new study material was added to the CMS.');
     successResponse(res, 'Material created', material, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -205,14 +218,17 @@ export const createMaterial = async (req, res) => {
 
 export const updateMaterial = async (req, res) => {
   try {
-    const material = await StudyMaterial.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const material = await prisma.studyMaterial.update({
+      where: { id: req.params.id },
+      data: req.body
+    });
     successResponse(res, 'Material updated', material);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const deleteMaterial = async (req, res) => {
   try {
-    await StudyMaterial.findByIdAndDelete(req.params.id);
+    await prisma.studyMaterial.delete({ where: { id: req.params.id } });
     await logActivity('content', 'Material Deleted', 'A study material was removed from the CMS.');
     successResponse(res, 'Material deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -223,14 +239,14 @@ export const deleteMaterial = async (req, res) => {
 // ==========================================
 export const getResults = async (req, res) => {
   try {
-    const results = await Result.find().sort({ createdAt: -1 });
+    const results = await prisma.result.findMany({ orderBy: { createdAt: 'desc' } });
     successResponse(res, 'Results fetched', results);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const createResult = async (req, res) => {
   try {
-    const result = await Result.create(req.body);
+    const result = await prisma.result.create({ data: req.body });
     await logActivity('content', 'New Result Created', 'A new result was added to the CMS.');
     successResponse(res, 'Result created', result, 201);
   } catch (error) { errorResponse(res, error.message, [], 500); }
@@ -238,14 +254,17 @@ export const createResult = async (req, res) => {
 
 export const updateResult = async (req, res) => {
   try {
-    const result = await Result.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const result = await prisma.result.update({
+      where: { id: req.params.id },
+      data: req.body
+    });
     successResponse(res, 'Result updated', result);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };
 
 export const deleteResult = async (req, res) => {
   try {
-    await Result.findByIdAndDelete(req.params.id);
+    await prisma.result.delete({ where: { id: req.params.id } });
     successResponse(res, 'Result deleted', null);
   } catch (error) { errorResponse(res, error.message, [], 500); }
 };

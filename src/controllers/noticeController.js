@@ -1,4 +1,4 @@
-import Notice from '../models/Notice.js';
+import prisma from '../config/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
 
 export const getNotices = async (req, res) => {
@@ -9,21 +9,33 @@ export const getNotices = async (req, res) => {
     let filter = {};
     if (userRole === 'student') {
       filter = {
-        $or: [{ targetAudience: 'students' }, { targetAudience: 'all' }],
-        $or: [{ targetClass: className }, { targetClass: 'All' }]
+        OR: [
+          {
+            targetAudience: { in: ['students', 'all'] },
+            targetClass: { in: [className, 'All'] }
+          }
+        ]
       };
     } else if (userRole === 'parent') {
       filter = {
-        $or: [{ targetAudience: 'parents' }, { targetAudience: 'all' }],
-        $or: [{ targetClass: className }, { targetClass: 'All' }]
+        OR: [
+          {
+            targetAudience: { in: ['parents', 'all'] },
+            targetClass: { in: [className, 'All'] }
+          }
+        ]
       };
     } else if (userRole === 'faculty') {
       filter = {
-        $or: [{ targetAudience: 'faculty' }, { targetAudience: 'all' }]
+        targetAudience: { in: ['faculty', 'all'] }
       };
     }
 
-    const notices = await Notice.find(filter).sort({ createdAt: -1 }).limit(10);
+    const notices = await prisma.notice.findMany({
+      where: filter,
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    });
     successResponse(res, 'Notices fetched successfully', notices);
   } catch (error) {
     errorResponse(res, error.message, [], 500);

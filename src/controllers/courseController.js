@@ -1,5 +1,5 @@
-import {  Course, LectureLog  } from '../models.js';
-import {  successResponse, errorResponse, paginatedResponse  } from '../utils/responseHelper.js';
+import prisma from '../config/prisma.js';
+import { successResponse, errorResponse, paginatedResponse } from '../utils/responseHelper.js';
 
 const getCourses = async (req, res) => {
   try {
@@ -8,38 +8,50 @@ const getCourses = async (req, res) => {
 
     if (category) where.category = category;
     if (mode) where.mode = mode;
-    if (batch) where.batches = batch; // MongoDB handles array inclusion automatically
+    if (batch) where.batches = { has: batch }; // PostgreSQL handles array inclusion with `has` in Prisma
     if (facultyId) where.facultyId = facultyId;
 
     const offset = (page - 1) * limit;
     
-    const count = await Course.countDocuments(where);
-    const courses = await Course.find(where)
-      .skip(offset)
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 })
-      .populate('facultyId', 'name email')
-      .lean();
+    const count = await prisma.course.count({ where });
+    const courses = await prisma.course.findMany({
+      where,
+      skip: offset,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' }
+    });
 
     // Attach completed lessons count from LectureLog
     for (let course of courses) {
       const baseSubject = course.title.split(/[-\s]+/)[0].trim();
-      const logQuery = { subject: new RegExp(baseSubject, 'i') };
       
-      const logsCount = await LectureLog.countDocuments(logQuery);
-      const latestLog = await LectureLog.findOne(logQuery)
-        .sort({ date: -1 })
-        .populate('facultyId', 'name');
+      const logsCount = await prisma.lectureLog.count({
+        where: { subject: { contains: baseSubject, mode: 'insensitive' } }
+      });
+      
+      const latestLog = await prisma.lectureLog.findFirst({
+        where: { subject: { contains: baseSubject, mode: 'insensitive' } },
+        orderBy: { date: 'desc' }
+      });
         
       course.completedLessons = logsCount;
       course.totalLessons = course.totalLessons || 30; // Default to 30 if not specified
       
-      // Prefer the directly assigned facultyName if available, else fallback to latestLog
-      if (course.facultyId && course.facultyId.name) {
-        course.facultyName = course.facultyId.name;
-      } else {
-        course.facultyName = latestLog?.facultyId?.name || null;
+      let facultyName = null;
+      if (course.facultyId) {
+        // Fetch faculty name manually because we didn't include it in relations yet
+        // In prisma we'd do include: { faculty: true } if schema has relation
+        // Let's assume we fetch it if we have ID
+        const faculty = await prisma.faculty.findUnique({ where: { id: course.facultyId } });
+        facultyName = faculty?.name || null;
       }
+
+      if (!facultyName && latestLog && latestLog.facultyId) {
+        const logFaculty = await prisma.faculty.findUnique({ where: { id: latestLog.facultyId } });
+        facultyName = logFaculty?.name || null;
+      }
+      
+      course.facultyName = facultyName;
     }
 
     paginatedResponse(res, courses, page, limit, count, 'Courses fetched successfully');
@@ -52,7 +64,9 @@ const getCourseBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const course = await Course.findOne({ courseCode: slug, status: 'active' });
+    const course = await prisma.course.findFirst({
+      where: { courseCode: slug, status: 'active' }
+    });
     if (!course) {
       return errorResponse(res, 'Course not found', [], 404);
     }
@@ -67,22 +81,25 @@ const createCourse = async (req, res) => {
   try {
     const { title, courseCode, description, category, duration, fee, mode, batches, facultyId, totalStudents } = req.body;
 
-    const existingCourse = await Course.findOne({ courseCode });
+    const existingCourse = await prisma.course.findUnique({ where: { courseCode } });
     if (existingCourse) {
       return errorResponse(res, 'Course code already exists', [], 400);
     }
 
-    const course = await Course.create({
-      title,
-      courseCode,
-      description,
-      category,
-      duration,
-      fee,
-      mode,
-      batches: batches || [],
-      facultyId: facultyId || null,
-      totalStudents: totalStudents || 0,
+    const course = await prisma.course.create({
+      data: {
+        title: title || '',
+        courseCode,
+        description: description || '',
+        category: category || '',
+        duration: duration || '',
+        fee: fee ? parseFloat(fee) : 0,
+        mode: mode || '',
+        batches: batches || [],
+        facultyId: facultyId || null,
+        totalStudents: totalStudents || 0,
+        status: 'active'
+      }
     });
 
     successResponse(res, 'Course created successfully', course, 201);
@@ -94,15 +111,19 @@ const createCourse = async (req, res) => {
 const updateCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+    if (updates.fee !== undefined) updates.fee = parseFloat(updates.fee);
 
-    const course = await Course.findByIdAndUpdate(id, updates, { new: true });
-    if (!course) {
-      return errorResponse(res, 'Course not found', [], 404);
-    }
+    const course = await prisma.course.update({
+      where: { id },
+      data: updates
+    });
 
     successResponse(res, 'Course updated successfully', course);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Course not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };
@@ -111,13 +132,13 @@ const deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const course = await Course.findByIdAndDelete(id);
-    if (!course) {
-      return errorResponse(res, 'Course not found', [], 404);
-    }
+    await prisma.course.delete({ where: { id } });
 
     successResponse(res, 'Course deleted successfully', {});
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Course not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };

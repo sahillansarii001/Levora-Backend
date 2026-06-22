@@ -1,8 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import Student from '../models/Student.js';
-import Parent from '../models/Parent.js';
-import Faculty from '../models/Faculty.js';
+import prisma from '../config/prisma.js';
 import { generateOTP, verifyOTP } from '../utils/generateOTP.js';
 import { sendEmail, otpEmail } from '../utils/sendEmail.js';
 import generateStudentId from '../utils/generateStudentId.js';
@@ -10,13 +8,14 @@ import { successResponse, errorResponse } from '../utils/responseHelper.js';
 import { createAccessToken, createRefreshToken } from '../utils/tokenUtils.js';
 import { logActivity } from './activityController.js';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Helper to generate both tokens for a user
 const generateTokens = (user, role) => {
   const payload = { 
-    id: user._id, 
+    id: user.id, 
     email: user.email, 
     role,
     name: user.name,
@@ -44,35 +43,58 @@ export const registerUser = async (req, res) => {
       return errorResponse(res, otpVerification.message, [], 400);
     }
 
-    let Model;
-    if (role === 'student') Model = Student;
-    else if (role === 'parent') Model = Parent;
-    else if (role === 'faculty') Model = Faculty;
+    let existingUser;
+    if (role === 'student') existingUser = await prisma.student.findUnique({ where: { email } });
+    else if (role === 'parent') existingUser = await prisma.parent.findUnique({ where: { email } });
+    else if (role === 'faculty') existingUser = await prisma.faculty.findUnique({ where: { email } });
 
-    const existingUser = await Model.findOne({ email });
     if (existingUser) {
       return errorResponse(res, 'Email already registered', [], 400);
     }
 
-    let userData = { name, email, phone, password };
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
+    let user;
     if (role === 'student') {
-      userData.studentId = await generateStudentId();
-      userData.dob = otherData.dob;
-      userData.schoolName = otherData.schoolName;
-      userData.className = otherData.className;
+      user = await prisma.student.create({
+        data: {
+          studentId: await generateStudentId(),
+          name,
+          email,
+          phone,
+          password: hashedPassword,
+          dob: otherData.dob ? new Date(otherData.dob) : null,
+          schoolName: otherData.schoolName || '',
+          className: otherData.className || ''
+        }
+      });
     } else if (role === 'faculty') {
-      userData.facultyId = `FAC${Math.floor(1000 + Math.random() * 9000)}`;
-      userData.subject = otherData.subject || 'General';
+      user = await prisma.faculty.create({
+        data: {
+          facultyId: `FAC${Math.floor(1000 + Math.random() * 9000)}`,
+          name,
+          email,
+          phone,
+          password: hashedPassword,
+          subject: otherData.subject || 'General'
+        }
+      });
     } else if (role === 'parent') {
-      userData.parentOf = otherData.parentOf;
+      user = await prisma.parent.create({
+        data: {
+          name,
+          email,
+          phone,
+          password: hashedPassword,
+          parentOf: otherData.parentOf || ''
+        }
+      });
     }
-
-    const user = await Model.create(userData);
 
     const { accessToken, refreshToken } = generateTokens(user, role);
 
-    const responseData = { id: user._id, name, email };
+    const responseData = { id: user.id, name, email };
     if (role === 'student') responseData.studentId = user.studentId;
     if (role === 'faculty') responseData.facultyId = user.facultyId;
 
@@ -90,20 +112,27 @@ export const studentLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const student = await Student.findOne({ email });
+    const student = await prisma.student.findUnique({ where: { email } });
     if (!student) {
       return errorResponse(res, 'Invalid credentials', [], 401);
     }
 
-    const isValid = await student.matchPassword(password);
+    const isValid = await bcrypt.compare(password, student.password);
     if (!isValid) {
       return errorResponse(res, 'Invalid credentials', [], 401);
+    }
+
+    if (student.status === 'pending') {
+      return errorResponse(res, 'Account pending approval by admin', [], 401);
+    }
+    if (student.status === 'rejected') {
+      return errorResponse(res, 'Account registration rejected', [], 401);
     }
 
     const { accessToken, refreshToken } = generateTokens(student, 'student');
 
     successResponse(res, 'Login successful', {
-      student: { id: student._id, name: student.name, email, studentId: student.studentId, className: student.className },
+      student: { id: student.id, name: student.name, email, studentId: student.studentId, className: student.className },
       accessToken,
       refreshToken,
     });
@@ -168,36 +197,47 @@ export const login = async (req, res) => {
     }
 
     // 2. Check Student (by email or studentId)
-    const student = await Student.findOne({ 
-      $or: [{ email: identifier }, { studentId: identifier }] 
+    const student = await prisma.student.findFirst({ 
+      where: { OR: [{ email: identifier }, { studentId: identifier }] } 
     });
 
     if (student) {
-      const isValid = await student.matchPassword(password);
+      const isValid = await bcrypt.compare(password, student.password);
       if (isValid) {
+        if (student.status === 'pending') {
+          return errorResponse(res, 'Account pending approval by admin', [], 401);
+        }
+        if (student.status === 'rejected') {
+          return errorResponse(res, 'Account registration rejected', [], 401);
+        }
         const { accessToken, refreshToken } = generateTokens(student, 'student');
         return successResponse(res, 'Student login successful', {
-          student: { id: student._id, name: student.name, email: student.email, studentId: student.studentId, className: student.className },
+          student: { id: student.id, name: student.name, email: student.email, studentId: student.studentId, className: student.className },
           role: 'student',
           accessToken,
           refreshToken,
-          // maintain backwards compatibility token naming
           token: accessToken
         });
       }
     }
 
     // 3. Check Parent (by email or phone)
-    const parent = await Parent.findOne({ 
-      $or: [{ email: identifier }, { phone: identifier }] 
+    const parent = await prisma.parent.findFirst({ 
+      where: { OR: [{ email: identifier }, { phone: identifier }] } 
     });
 
     if (parent) {
-      const isValid = await parent.matchPassword(password);
+      const isValid = await bcrypt.compare(password, parent.password);
       if (isValid) {
+        if (parent.status === 'pending') {
+          return errorResponse(res, 'Account pending approval by admin', [], 401);
+        }
+        if (parent.status === 'rejected') {
+          return errorResponse(res, 'Account registration rejected', [], 401);
+        }
         const { accessToken, refreshToken } = generateTokens(parent, 'parent');
         return successResponse(res, 'Parent login successful', {
-          user: { id: parent._id, name: parent.name, email: parent.email, parentOf: parent.parentOf },
+          user: { id: parent.id, name: parent.name, email: parent.email, parentOf: parent.parentOf },
           role: 'parent',
           accessToken,
           refreshToken,
@@ -207,16 +247,22 @@ export const login = async (req, res) => {
     }
 
     // 4. Check Faculty (by email or facultyId)
-    const faculty = await Faculty.findOne({
-      $or: [{ email: identifier }, { facultyId: identifier }]
+    const faculty = await prisma.faculty.findFirst({
+      where: { OR: [{ email: identifier }, { facultyId: identifier }] }
     });
 
-    if (faculty && faculty.status === 'active') {
-      const isValid = await faculty.matchPassword(password);
+    if (faculty) {
+      const isValid = await bcrypt.compare(password, faculty.password);
       if (isValid) {
+        if (faculty.status === 'pending') {
+          return errorResponse(res, 'Account pending approval by admin', [], 401);
+        }
+        if (faculty.status === 'rejected') {
+          return errorResponse(res, 'Account registration rejected', [], 401);
+        }
         const { accessToken, refreshToken } = generateTokens(faculty, 'faculty');
         return successResponse(res, 'Faculty login successful', {
-          user: { id: faculty._id, name: faculty.name, email: faculty.email, facultyId: faculty.facultyId, subject: faculty.subject },
+          user: { id: faculty.id, name: faculty.name, email: faculty.email, facultyId: faculty.facultyId, subject: faculty.subject },
           role: 'faculty',
           accessToken,
           refreshToken,
@@ -295,19 +341,17 @@ export const googleLogin = async (req, res) => {
 
     const { name, email, picture } = payload;
 
-    let Model;
-    if (role === 'student') Model = Student;
-    else if (role === 'parent') Model = Parent;
-    else if (role === 'faculty') Model = Faculty;
-
-    let user = await Model.findOne({ email });
+    let user;
+    if (role === 'student') user = await prisma.student.findUnique({ where: { email } });
+    else if (role === 'parent') user = await prisma.parent.findUnique({ where: { email } });
+    else if (role === 'faculty') user = await prisma.faculty.findUnique({ where: { email } });
 
     // Auto-register if not exists
     if (!user) {
       // Check if email belongs to a different role first
-      const studentExists = await Student.findOne({ email });
-      const parentExists = await Parent.findOne({ email });
-      const facultyExists = await Faculty.findOne({ email });
+      const studentExists = await prisma.student.findUnique({ where: { email } });
+      const parentExists = await prisma.parent.findUnique({ where: { email } });
+      const facultyExists = await prisma.faculty.findUnique({ where: { email } });
       
       if (studentExists || parentExists || facultyExists) {
          return errorResponse(res, 'Email already registered under a different role', [], 400);
@@ -315,28 +359,39 @@ export const googleLogin = async (req, res) => {
 
       // Generate a highly secure random password to satisfy schema requirements
       const randomPassword = crypto.randomBytes(16).toString('hex') + 'A1!';
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
       
       let userData = {
         name,
         email,
         phone: 'Not Provided',
-        password: randomPassword,
+        password: hashedPassword,
         profileImage: picture
       };
 
       if (role === 'student') {
         userData.studentId = await generateStudentId();
+        user = await prisma.student.create({ data: userData });
       } else if (role === 'faculty') {
         userData.facultyId = `FAC${Math.floor(1000 + Math.random() * 9000)}`;
+        user = await prisma.faculty.create({ data: userData });
+      } else if (role === 'parent') {
+        user = await prisma.parent.create({ data: userData });
       }
+    }
 
-      user = await Model.create(userData);
+    if (user.status === 'pending') {
+      return errorResponse(res, 'Account pending approval by admin', [], 401);
+    }
+    if (user.status === 'rejected') {
+      return errorResponse(res, 'Account registration rejected', [], 401);
     }
 
     // Login user
     const { accessToken, refreshToken } = generateTokens(user, role);
 
-    const responseData = { id: user._id, name: user.name, email: user.email, profileImage: user.profileImage || picture };
+    const responseData = { id: user.id, name: user.name, email: user.email, profileImage: user.profileImage || picture };
     if (role === 'student') responseData.studentId = user.studentId;
     if (role === 'faculty') responseData.facultyId = user.facultyId;
 
@@ -376,9 +431,9 @@ export const forgotPassword = async (req, res) => {
       return errorResponse(res, 'Email is required', [], 400);
     }
 
-    const student = await Student.findOne({ email });
-    const parent = await Parent.findOne({ email });
-    const faculty = await Faculty.findOne({ email });
+    const student = await prisma.student.findUnique({ where: { email } });
+    const parent = await prisma.parent.findUnique({ where: { email } });
+    const faculty = await prisma.faculty.findUnique({ where: { email } });
 
     if (!student && !parent && !faculty) {
       return errorResponse(res, 'No account found with this email', [], 404);
@@ -412,18 +467,28 @@ export const resetPassword = async (req, res) => {
       return errorResponse(res, otpVerification.message, [], 400);
     }
 
-    let user = await Student.findOne({ email });
-    if (!user) user = await Parent.findOne({ email });
-    if (!user) user = await Faculty.findOne({ email });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    if (!user) {
-      return errorResponse(res, 'No account found with this email', [], 404);
+    const student = await prisma.student.findUnique({ where: { email } });
+    if (student) {
+      await prisma.student.update({ where: { id: student.id }, data: { password: hashedPassword } });
+      return successResponse(res, 'Password has been reset successfully', {});
     }
 
-    user.password = newPassword;
-    await user.save();
+    const parent = await prisma.parent.findUnique({ where: { email } });
+    if (parent) {
+      await prisma.parent.update({ where: { id: parent.id }, data: { password: hashedPassword } });
+      return successResponse(res, 'Password has been reset successfully', {});
+    }
 
-    successResponse(res, 'Password has been reset successfully', {});
+    const faculty = await prisma.faculty.findUnique({ where: { email } });
+    if (faculty) {
+      await prisma.faculty.update({ where: { id: faculty.id }, data: { password: hashedPassword } });
+      return successResponse(res, 'Password has been reset successfully', {});
+    }
+
+    return errorResponse(res, 'No account found with this email', [], 404);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }

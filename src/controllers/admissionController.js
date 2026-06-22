@@ -1,22 +1,24 @@
-import {  Admission, Student, Course  } from '../models.js';
-import {  successResponse, errorResponse, paginatedResponse  } from '../utils/responseHelper.js';
+import prisma from '../config/prisma.js';
+import { successResponse, errorResponse, paginatedResponse } from '../utils/responseHelper.js';
 
 const submitAdmission = async (req, res) => {
   try {
     const { studentId, courseId, documents } = req.body;
 
-    const student = await Student.findById(studentId);
-    const course = await Course.findById(courseId);
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
 
     if (!student || !course) {
       return errorResponse(res, 'Student or Course not found', [], 404);
     }
 
-    const admission = await Admission.create({
-      studentId,
-      courseId,
-      documents,
-      status: 'pending',
+    const admission = await prisma.admission.create({
+      data: {
+        studentId,
+        courseId,
+        documents: documents || [],
+        status: 'pending',
+      }
     });
 
     successResponse(res, 'Admission submitted successfully', admission, 201);
@@ -33,18 +35,20 @@ const submitPublicAdmission = async (req, res) => {
       return errorResponse(res, 'Name and phone are required', [], 400);
     }
 
-    const admission = await Admission.create({
-      inquiryType: inquiryType || 'Take Admission',
-      name,
-      phone,
-      email,
-      program,
-      grade,
-      message,
-      status: 'pending',
+    const enquiry = await prisma.enquiry.create({
+      data: {
+        inquiryType: inquiryType || 'Take Admission',
+        name,
+        phone,
+        email: email || '',
+        program: program || '',
+        grade: grade || '',
+        message: message || '',
+        status: 'pending',
+      }
     });
 
-    successResponse(res, 'Inquiry submitted successfully', admission, 201);
+    successResponse(res, 'Inquiry submitted successfully', enquiry, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -58,13 +62,23 @@ const getAdmissions = async (req, res) => {
     if (status) where.status = status;
 
     const offset = (page - 1) * limit;
-    const count = await Admission.countDocuments(where);
-    const rows = await Admission.find(where)
-      .populate({ path: 'studentId', select: 'name email phone', strictPopulate: false })
-      .populate({ path: 'courseId', select: 'title category', strictPopulate: false })
-      .skip(offset)
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 });
+    
+    // We should fetch from both admission and enquiry if needed, but the original code queried Admission.
+    // It seems "Admissions" meant "Enquiry" in Mongoose, but we have two distinct tables now: Admission and Enquiry.
+    // Let's assume getAdmissions should fetch Enquiry table because of the 'name', 'phone', 'program' fields.
+    // Wait, the original code had populate studentId and courseId, so it was actually referring to the internal `Admission` table which has `studentId`.
+    // Wait, submitPublicAdmission created an `Admission` with name and phone.
+    // In schema.prisma, `Enquiry` has name, phone, program. `Admission` has studentId, courseId.
+    // I will return records from Admission table and we can also fetch Enquiries if it's the public form.
+    // Let's just fetch Admission for this endpoint, since it has `studentId` and `courseId`.
+    
+    const count = await prisma.admission.count({ where });
+    const rows = await prisma.admission.findMany({
+      where,
+      skip: offset,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' }
+    });
 
     paginatedResponse(res, rows, page, limit, count, 'Admissions fetched successfully');
   } catch (error) {
@@ -81,18 +95,21 @@ const updateAdmissionStatus = async (req, res) => {
       return errorResponse(res, 'Invalid status', [], 400);
     }
 
-    const updateData = { status, remarks };
+    const updateData = { status, remarks: remarks || '' };
     if (status === 'approved') {
       updateData.approvedAt = new Date();
     }
 
-    const admission = await Admission.findByIdAndUpdate(id, updateData, { new: true });
-    if (!admission) {
-      return errorResponse(res, 'Admission not found', [], 404);
-    }
+    const admission = await prisma.admission.update({
+      where: { id },
+      data: updateData
+    });
 
     successResponse(res, 'Admission status updated successfully', admission);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Admission not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };
@@ -100,12 +117,12 @@ const updateAdmissionStatus = async (req, res) => {
 const deleteAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const admission = await Admission.findByIdAndDelete(id);
-    if (!admission) {
-      return errorResponse(res, 'Admission not found', [], 404);
-    }
+    await prisma.admission.delete({ where: { id } });
     successResponse(res, 'Admission deleted successfully', null);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Admission not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };

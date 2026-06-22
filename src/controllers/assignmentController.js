@@ -1,8 +1,5 @@
-import Assignment from '../models/Assignment.js';
-import Student from '../models/Student.js';
-import Course from '../models/Course.js';
+import prisma from '../config/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
-import mongoose from 'mongoose';
 
 // Admin endpoints
 export const createAssignment = async (req, res) => {
@@ -18,17 +15,20 @@ export const createAssignment = async (req, res) => {
       description,
       subject,
       className,
-      dueDate,
-      fileUrl,
+      dueDate: new Date(dueDate),
+      fileUrl: fileUrl || '',
+      status: 'active',
+      submissions: []
     };
 
     if (req.user && req.user.role === 'faculty') {
       assignmentData.facultyId = req.user.id;
     }
 
-    const assignment = new Assignment(assignmentData);
+    const assignment = await prisma.assignment.create({
+      data: assignmentData
+    });
 
-    await assignment.save();
     successResponse(res, 'Assignment created successfully', assignment, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -37,7 +37,13 @@ export const createAssignment = async (req, res) => {
 
 export const getAdminAssignments = async (req, res) => {
   try {
-    const assignments = await Assignment.find().sort({ createdAt: -1 }).populate('submissions.studentId', 'name');
+    const assignments = await prisma.assignment.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    // We cannot populate `submissions.studentId` automatically since submissions is a JSON field.
+    // For admin assignments we might fetch all students and map them if needed, or simply return raw submissions.
+    // We'll return raw for now.
     successResponse(res, 'Assignments fetched successfully', assignments);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -47,12 +53,12 @@ export const getAdminAssignments = async (req, res) => {
 export const deleteAssignment = async (req, res) => {
   try {
     const { id } = req.params;
-    const assignment = await Assignment.findByIdAndDelete(id);
-    if (!assignment) {
-      return errorResponse(res, 'Assignment not found', [], 404);
-    }
+    await prisma.assignment.delete({ where: { id } });
     successResponse(res, 'Assignment deleted successfully', null);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Assignment not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };
@@ -61,25 +67,30 @@ export const deleteAssignment = async (req, res) => {
 export const getFacultyAssignments = async (req, res) => {
   try {
     const facultyId = req.user.id;
-    const assignments = await Assignment.find({ facultyId })
-      .sort({ createdAt: -1 })
-      .populate('submissions.studentId', 'name');
+    const assignments = await prisma.assignment.findMany({
+      where: { facultyId },
+      orderBy: { createdAt: 'desc' }
+    });
     
-    // Fetch courses for this faculty to get total students
-    const courses = await Course.find({ facultyId });
+    const courses = await prisma.course.findMany({ where: { facultyId } });
     
-    // Add submissions stats
+    // Try to get student names. Since submissions is JSON, we can fetch all students to map names.
+    const allStudents = await prisma.student.findMany({ select: { id: true, name: true } });
+    const studentMap = {};
+    allStudents.forEach(s => studentMap[s.id] = s.name);
+
     const mappedAssignments = assignments.map(a => {
-      const completedSubmissions = a.submissions.filter(s => s.status === 'completed');
-      const submissions = completedSubmissions.length;
-      const submittedStudents = completedSubmissions.map(s => s.studentId ? s.studentId.name : 'Unknown');
+      const submissionsArr = Array.isArray(a.submissions) ? a.submissions : [];
+      const completedSubmissions = submissionsArr.filter(s => s.status === 'completed');
+      const submissionsCount = completedSubmissions.length;
       
-      // Try to find matching course by title
+      const submittedStudents = completedSubmissions.map(s => studentMap[s.studentId] || 'Unknown');
+      
       const course = courses.find(c => c.title === a.subject);
       const total = course ? (course.totalStudents || 0) : 0;
       
       return {
-        _id: a._id,
+        _id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
@@ -87,7 +98,7 @@ export const getFacultyAssignments = async (req, res) => {
         fileUrl: a.fileUrl,
         class: a.className,
         status: a.status,
-        submissions,
+        submissions: submissionsCount,
         submittedStudents,
         total
       };
@@ -102,34 +113,36 @@ export const getFacultyAssignments = async (req, res) => {
 // Student/Parent endpoints
 export const getStudentAssignments = async (req, res) => {
   try {
-    // Determine the student ID and className
     let studentId;
     let className;
 
     if (req.user.role === 'student') {
       studentId = req.user.id;
-      const student = await Student.findById(studentId);
+      const student = await prisma.student.findUnique({ where: { id: studentId } });
       if (!student) return errorResponse(res, 'Student not found', [], 404);
       className = student.className;
     } else if (req.user.role === 'parent') {
-      const parent = await mongoose.model('Parent').findById(req.user.id).populate('childrenIds');
+      const parent = await prisma.parent.findUnique({ where: { id: req.user.id } });
       if (!parent) return errorResponse(res, 'Parent not found', [], 404);
       
       let child = null;
       if (parent.childrenIds && parent.childrenIds.length > 0) {
-        child = parent.childrenIds[0];
+        child = await prisma.student.findUnique({ where: { id: parent.childrenIds[0] } });
       } else if (parent.parentOf) {
-        child = await mongoose.model('Student').findOne({ studentId: parent.parentOf });
+        child = await prisma.student.findUnique({ where: { studentId: parent.parentOf } });
       }
 
       if (!child) return errorResponse(res, 'Linked student not found', [], 404);
-      studentId = child._id;
+      studentId = child.id;
       className = child.className;
     } else if (['admin', 'superadmin'].includes(req.user.role)) {
-      // Allow admin/superadmin to preview the student assignments page
-      const assignments = await Assignment.find({ status: 'active' }).sort({ dueDate: 1 }).limit(10);
+      const assignments = await prisma.assignment.findMany({
+        where: { status: 'active' },
+        orderBy: { dueDate: 'asc' },
+        take: 10
+      });
       const mappedAssignments = assignments.map(a => ({
-        _id: a._id,
+        _id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
@@ -146,13 +159,16 @@ export const getStudentAssignments = async (req, res) => {
       return successResponse(res, 'Assignments fetched', []);
     }
 
-    const assignments = await Assignment.find({ className, status: 'active' }).sort({ dueDate: 1 });
+    const assignments = await prisma.assignment.findMany({
+      where: { className, status: 'active' },
+      orderBy: { dueDate: 'asc' }
+    });
     
-    // Map to include a `isCompleted` flag for easy frontend rendering
     const mappedAssignments = assignments.map(a => {
-      const isCompleted = a.submissions.some(s => s.studentId.toString() === studentId.toString() && s.status === 'completed');
+      const submissionsArr = Array.isArray(a.submissions) ? a.submissions : [];
+      const isCompleted = submissionsArr.some(s => String(s.studentId) === String(studentId) && s.status === 'completed');
       return {
-        _id: a._id,
+        _id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
@@ -172,33 +188,38 @@ export const markAssignmentCompleted = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Only students can mark as completed
     if (req.user.role !== 'student') {
       return errorResponse(res, 'Only students can complete assignments', [], 403);
     }
 
-    const assignment = await Assignment.findById(id);
+    const assignment = await prisma.assignment.findUnique({ where: { id } });
     if (!assignment) {
       return errorResponse(res, 'Assignment not found', [], 404);
     }
 
-    // Check if already completed
-    const existingSubmission = assignment.submissions.find(s => s.studentId.toString() === req.user.id.toString());
+    let submissionsArr = Array.isArray(assignment.submissions) ? assignment.submissions : [];
+    
+    const existingSubmission = submissionsArr.find(s => String(s.studentId) === String(req.user.id));
     if (existingSubmission) {
       if (existingSubmission.status === 'completed') {
         return successResponse(res, 'Assignment already marked as completed', assignment);
       }
       existingSubmission.status = 'completed';
-      existingSubmission.completedAt = Date.now();
+      existingSubmission.completedAt = new Date().toISOString();
     } else {
-      assignment.submissions.push({
+      submissionsArr.push({
         studentId: req.user.id,
-        status: 'completed'
+        status: 'completed',
+        completedAt: new Date().toISOString()
       });
     }
 
-    await assignment.save();
-    successResponse(res, 'Assignment marked as completed', assignment);
+    const updatedAssignment = await prisma.assignment.update({
+      where: { id },
+      data: { submissions: submissionsArr }
+    });
+
+    successResponse(res, 'Assignment marked as completed', updatedAssignment);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }

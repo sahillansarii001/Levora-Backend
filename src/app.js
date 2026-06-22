@@ -54,6 +54,7 @@ import assignmentRoutes from './routes/assignments.js';
 import examResultRoutes from './routes/examResults.js';
 import testimonialRoutes from './routes/testimonials.js';
 import studentAuthRoutes from './routes/studentAuth.js';
+import registrationRoutes from './routes/registration.routes.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -72,6 +73,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/fees', feeRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/admin/registrations', registrationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notices', noticeRoutes);

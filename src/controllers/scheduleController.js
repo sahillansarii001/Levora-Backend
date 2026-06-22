@@ -1,5 +1,4 @@
-import Schedule from '../models/Schedule.js';
-import mongoose from 'mongoose';
+import prisma from '../config/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseHelper.js';
 
 // Get Schedule based on student's class
@@ -9,20 +8,26 @@ export const getSchedule = async (req, res) => {
     
     let filter = {};
     if (className) filter.className = className;
-    if (date) filter.date = new Date(date);
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.date = { gte: startOfDay, lte: endOfDay };
+    }
     
     // If student is logged in, restrict to their class
     if (req.user && req.user.role === 'student' && req.user.className) {
       filter.className = req.user.className;
     } else if (req.user && req.user.role === 'parent') {
-      const parent = await mongoose.model('Parent').findById(req.user.id).populate('childrenIds');
+      const parent = await prisma.parent.findUnique({ where: { id: req.user.id } });
       if (!parent) return successResponse(res, 'Parent not found', []);
       
       let child = null;
       if (parent.childrenIds && parent.childrenIds.length > 0) {
-        child = parent.childrenIds[0];
+        child = await prisma.student.findUnique({ where: { id: parent.childrenIds[0] } });
       } else if (parent.parentOf) {
-        child = await mongoose.model('Student').findOne({ studentId: parent.parentOf });
+        child = await prisma.student.findUnique({ where: { studentId: parent.parentOf } });
       }
 
       if (child) {
@@ -34,7 +39,10 @@ export const getSchedule = async (req, res) => {
       filter.instructor = req.user.name; // Assuming faculty see their own classes, or could see all
     }
 
-    const schedule = await Schedule.find(filter).sort({ startTime: 1 });
+    const schedule = await prisma.schedule.findMany({
+      where: filter,
+      orderBy: { startTime: 'asc' }
+    });
     successResponse(res, 'Schedule fetched successfully', schedule);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -44,8 +52,10 @@ export const getSchedule = async (req, res) => {
 // Admin/Faculty can add schedule
 export const createSchedule = async (req, res) => {
   try {
-    const newSchedule = new Schedule(req.body);
-    await newSchedule.save();
+    const data = { ...req.body };
+    if (data.date) data.date = new Date(data.date);
+
+    const newSchedule = await prisma.schedule.create({ data });
     successResponse(res, 'Schedule created successfully', newSchedule, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
@@ -54,20 +64,31 @@ export const createSchedule = async (req, res) => {
 
 export const updateSchedule = async (req, res) => {
   try {
-    const updatedSchedule = await Schedule.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedSchedule) return errorResponse(res, 'Schedule not found', [], 404);
+    const data = { ...req.body };
+    if (data.date) data.date = new Date(data.date);
+
+    const updatedSchedule = await prisma.schedule.update({
+      where: { id: req.params.id },
+      data
+    });
+    
     successResponse(res, 'Schedule updated successfully', updatedSchedule);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Schedule not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };
 
 export const deleteSchedule = async (req, res) => {
   try {
-    const deletedSchedule = await Schedule.findByIdAndDelete(req.params.id);
-    if (!deletedSchedule) return errorResponse(res, 'Schedule not found', [], 404);
+    await prisma.schedule.delete({ where: { id: req.params.id } });
     successResponse(res, 'Schedule deleted successfully', null);
   } catch (error) {
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Schedule not found', [], 404);
+    }
     errorResponse(res, error.message, [], 500);
   }
 };

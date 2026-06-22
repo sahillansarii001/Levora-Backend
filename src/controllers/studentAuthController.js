@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import Student from '../models/Student.js';
+import prisma from '../config/prisma.js';
+import bcrypt from 'bcryptjs';
 
 // Generate JWT
 const generateToken = (id) => {
@@ -15,18 +16,25 @@ export const authStudent = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const student = await Student.findOne({ email });
+    const student = await prisma.student.findUnique({ where: { email } });
 
-    if (student && (await student.matchPassword(password))) {
+    if (student && (await bcrypt.compare(password, student.password))) {
+      if (student.status === 'pending') {
+        return res.status(401).json({ success: false, message: 'Account pending approval' });
+      }
+      if (student.status === 'rejected') {
+        return res.status(401).json({ success: false, message: 'Account registration rejected' });
+      }
+      
       res.json({
         success: true,
         data: {
-          _id: student._id,
+          _id: student.id,
           name: student.name,
           email: student.email,
           className: student.className,
           isSubscribed: student.isSubscribed,
-          token: generateToken(student._id),
+          token: generateToken(student.id),
         }
       });
     } else {
@@ -44,31 +52,36 @@ export const registerStudent = async (req, res) => {
   try {
     const { name, email, phone, password, className } = req.body;
 
-    const studentExists = await Student.findOne({ email });
+    const studentExists = await prisma.student.findUnique({ where: { email } });
 
     if (studentExists) {
       return res.status(400).json({ success: false, message: 'Student already exists' });
     }
 
-    const student = await Student.create({
-      name,
-      email,
-      phone,
-      password,
-      className,
-      studentId: `STU${Math.floor(1000 + Math.random() * 9000)}`, // Generate random ID
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const student = await prisma.student.create({
+      data: {
+        name,
+        email,
+        phone,
+        password: hashedPassword,
+        className: className || '',
+        studentId: `STU${Math.floor(1000 + Math.random() * 9000)}`, // Generate random ID
+      }
     });
 
     if (student) {
       res.status(201).json({
         success: true,
         data: {
-          _id: student._id,
+          _id: student.id,
           name: student.name,
           email: student.email,
           className: student.className,
           isSubscribed: student.isSubscribed,
-          token: generateToken(student._id),
+          token: generateToken(student.id),
         }
       });
     } else {
@@ -84,12 +97,15 @@ export const registerStudent = async (req, res) => {
 // @access  Private
 export const getStudentProfile = async (req, res) => {
   try {
-    const student = await Student.findById(req.user._id).select('-password');
+    const student = await prisma.student.findUnique({ 
+      where: { id: req.user.id } 
+    });
 
     if (student) {
+      const { password, ...studentData } = student;
       res.json({
         success: true,
-        data: student
+        data: studentData
       });
     } else {
       res.status(404).json({ success: false, message: 'Student not found' });

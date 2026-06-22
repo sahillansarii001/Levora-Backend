@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model OTPRecord {
+  id        String   @id @default(uuid())
+  phone     String?
+  email     String?
+  otp       String
+  verified  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Parent {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  phone       String
+  password    String
+  parentOf    String?
+  childrenIds String[]
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Result {
+  id          String   @id @default(uuid())
+  studentName String
+  photo       String?
+  rank        Int?
+  score       Float?
+  percentage  Float?
+  course      String?
+  year        Int?
+  board       String   @default("All")
+  achievement String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Salary {
+  id            String   @id @default(uuid())
+  facultyId     String
+  faculty       Faculty  @relation(fields: [facultyId], references: [id])
+  amount        Float
+  paymentDate   DateTime
+  month         String
+  paymentMethod String   @default("Bank Transfer")
+  status        String   @default("Paid")
+  remarks       String?
+  transactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Schedule {
+  id         String   @id @default(uuid())
+  className  String
+  date       DateTime
+  startTime  String
+  endTime    String
+  subject    String
+  instructor String
+  color      String   @default("blue")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model SiteContent {
+  id        String   @id @default(uuid())
+  page      String
+  section   String
+  key       String   @unique
+  value     String
+  type      String   @default("html")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id                 String    @id @default(uuid())
+  studentId          String?   @unique
+  name               String
+  email              String    @unique
+  phone              String
+  password           String
+  dob                DateTime?
+  parentName         String?
+  parentPhone        String?
+  address            String?
+  schoolName         String?
+  collegeName        String?
+  board              String?
+  className          String?
+  course             String?
+  batch              String?
+  profileImage       String?
+  documents          Json?
+  totalFees          Float     @default(0)
+  admissionDate      DateTime  @default(now())
+  status             String    @default("pending")
+  isSubscribed       Boolean   @default(false)
+  subscriptionExpiry DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model StudyMaterial {
+  id               String   @id @default(uuid())
+  title            String
+  className        String
+  subject          String
+  lesson           String?
+  topic            String?
+  board            String   @default("All")
+  category         String
+  fileUrl          String
+  originalFilename String?
+  previewUrl       String?
+  uploadedBy       String?
+  isPremium        Boolean  @default(false)
+  downloadCount    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SystemSetting {
+  id               String   @id @default(uuid())
+  academyName      String   @default("Levora Academy")
+  contactEmail     String   @default("support@levoraacademy.com")
+  contactPhone     String   @default("+91 9876543210")
+  address          String   @default("Mohite Patil Nagar, Shop no-74, Mankhurd West, Mumbai - 400043")
+  visitingHours    String   @default("Mon - Sun: 8:00 AM - 9:00 PM")
+  facebookUrl      String   @default("https://facebook.com/levoraacademy")
+  instagramUrl     String   @default("https://instagram.com/levoraacademy")
+  youtubeUrl       String   @default("https://youtube.com/@levoraacademy")
+  twitterUrl       String   @default("https://twitter.com/levoraacademy")
+  trustBadge1      String   @default("ISO Certified")
+  trustBadge2      String   @default("15+ Years Trust")
+  academicYear     String   @default("2024-2025")
+  admissionsOpen   Boolean  @default(true)
+  maintenanceMode  Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Faculty {
+  id            String   @id @default(uuid())
+  facultyId     String?  @unique
+  name          String
+  email         String   @unique
+  phone         String
+  password      String
+  subject       String?
+  qualification String?
+  experience    Int?
+  shortIntro    String?
+  profileImage  String?
+  status        String   @default("pending")
+  role          String   @default("faculty")
+  salaries      Salary[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Course {
+  id            String   @id @default(uuid())
+  courseCode    String?  @unique
+  title         String
+  description   String?
+  category      String?
+  duration      String?
+  fee           Float?
+  mode          String   @default("offline")
+  status        String   @default("active")
+  facultyId     String?
+  batches       String[]
+  totalStudents Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Notice {
+  id                   String   @id @default(uuid())
+  title                String
+  content              String
+  type                 String   @default("general")
+  targetAudience       String   @default("all")
+  sendPushNotification Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model Test {
+  id        String   @id @default(uuid())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Testimonial {
+  id        String   @id @default(uuid())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TestResult {
+  id        String   @id @default(uuid())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Admission {
+  id        String   @id @default(uuid())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Enquiry {
+  id        String   @id @default(uuid())
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  desc      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  userType  String
+  studentId String?
+  facultyId String?
+  date      DateTime
+  status    String
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  subject     String
+  className   String
+  dueDate     DateTime
+  fileUrl     String?
+  status      String   @default("active")
+  facultyId   String?
+  submissions Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String
+  excerpt     String?
+  coverImage  String?
+  category    String?
+  tags        String[]
+  publishedAt DateTime?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ExamResult {
+  id            String   @id @default(uuid())
+  studentId     String
+  examName      String
+  subject       String
+  marksObtained Float
+  totalMarks    Float
+  remarks       String?
+  examDate      DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model FeeRecord {
+  id            String   @id @default(uuid())
+  studentId     String
+  amount        Float
+  paymentDate   DateTime
+  paymentMethod String   @default("Cash")
+  status        String   @default("Paid")
+  remarks       String?
+  receiptId     String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LectureLog {
+  id        String   @id @default(uuid())
+  facultyId String
+  date      DateTime @default(now())
+  subject   String
+  topics    String
+  lesson    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

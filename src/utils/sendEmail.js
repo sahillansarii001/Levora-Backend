@@ -119,3 +119,23 @@ export const otpEmail = (otpCode) => {
     </div>
   `;
 };
+
+export const approvalEmail = (userName) => {
+  return `
+    <h2>Registration Approved - LEVORA ACADEMY</h2>
+    <p>Dear ${userName},</p>
+    <p>Your registration at Levora Academy has been approved by the administration.</p>
+    <p>You can now log in to your dashboard using your credentials.</p>
+    <p>Best regards,<br/>LEVORA ACADEMY Team</p>
+  `;
+};
+
+export const rejectionEmail = (userName) => {
+  return `
+    <h2>Registration Update - LEVORA ACADEMY</h2>
+    <p>Dear ${userName},</p>
+    <p>We regret to inform you that your registration at Levora Academy has been declined.</p>
+    <p>If you believe this is a mistake, please contact our support team.</p>
+    <p>Best regards,<br/>LEVORA ACADEMY Team</p>
+  `;
+};
