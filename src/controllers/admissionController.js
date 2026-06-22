@@ -14,14 +14,17 @@ const submitAdmission = async (req, res) => {
 
     const admission = await prisma.admission.create({
       data: {
-        studentId,
-        courseId,
-        documents: documents || [],
-        status: 'pending',
+        data: {
+          studentId,
+          courseId,
+          documents: documents || [],
+          status: 'pending',
+          type: 'internal'
+        }
       }
     });
 
-    successResponse(res, 'Admission submitted successfully', admission, 201);
+    successResponse(res, 'Admission submitted successfully', { _id: admission.id, ...admission.data }, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -37,18 +40,21 @@ const submitPublicAdmission = async (req, res) => {
 
     const enquiry = await prisma.enquiry.create({
       data: {
-        inquiryType: inquiryType || 'Take Admission',
-        name,
-        phone,
-        email: email || '',
-        program: program || '',
-        grade: grade || '',
-        message: message || '',
-        status: 'pending',
+        data: {
+          inquiryType: inquiryType || 'Take Admission',
+          name,
+          phone,
+          email: email || '',
+          program: program || '',
+          grade: grade || '',
+          message: message || '',
+          status: 'pending',
+          type: 'public_inquiry'
+        }
       }
     });
 
-    successResponse(res, 'Inquiry submitted successfully', enquiry, 201);
+    successResponse(res, 'Inquiry submitted successfully', { _id: enquiry.id, ...enquiry.data }, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -57,30 +63,32 @@ const submitPublicAdmission = async (req, res) => {
 const getAdmissions = async (req, res) => {
   try {
     const { status, page = 1, limit = 10 } = req.query;
-    const where = {};
 
-    if (status) where.status = status;
+    const admissions = await prisma.admission.findMany();
+    const enquiries = await prisma.enquiry.findMany();
 
-    const offset = (page - 1) * limit;
-    
-    // We should fetch from both admission and enquiry if needed, but the original code queried Admission.
-    // It seems "Admissions" meant "Enquiry" in Mongoose, but we have two distinct tables now: Admission and Enquiry.
-    // Let's assume getAdmissions should fetch Enquiry table because of the 'name', 'phone', 'program' fields.
-    // Wait, the original code had populate studentId and courseId, so it was actually referring to the internal `Admission` table which has `studentId`.
-    // Wait, submitPublicAdmission created an `Admission` with name and phone.
-    // In schema.prisma, `Enquiry` has name, phone, program. `Admission` has studentId, courseId.
-    // I will return records from Admission table and we can also fetch Enquiries if it's the public form.
-    // Let's just fetch Admission for this endpoint, since it has `studentId` and `courseId`.
-    
-    const count = await prisma.admission.count({ where });
-    const rows = await prisma.admission.findMany({
-      where,
-      skip: offset,
-      take: parseInt(limit),
-      orderBy: { createdAt: 'desc' }
+    const allRows = [...admissions, ...enquiries].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const formattedRows = allRows.map(row => {
+      const docData = typeof row.data === 'object' && row.data !== null ? row.data : {};
+      return {
+        _id: row.id,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        ...docData
+      };
     });
 
-    paginatedResponse(res, rows, page, limit, count, 'Admissions fetched successfully');
+    let filteredRows = formattedRows;
+    if (status) {
+      filteredRows = filteredRows.filter(r => r.status === status);
+    }
+
+    const count = filteredRows.length;
+    const offset = (page - 1) * limit;
+    const paginated = filteredRows.slice(offset, offset + parseInt(limit));
+
+    paginatedResponse(res, paginated, page, limit, count, 'Admissions fetched successfully');
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -95,21 +103,32 @@ const updateAdmissionStatus = async (req, res) => {
       return errorResponse(res, 'Invalid status', [], 400);
     }
 
-    const updateData = { status, remarks: remarks || '' };
-    if (status === 'approved') {
-      updateData.approvedAt = new Date();
+    let record = await prisma.enquiry.findUnique({ where: { id } });
+    let model = prisma.enquiry;
+    
+    if (!record) {
+      record = await prisma.admission.findUnique({ where: { id } });
+      model = prisma.admission;
     }
 
-    const admission = await prisma.admission.update({
+    if (!record) {
+      return errorResponse(res, 'Admission/Enquiry not found', [], 404);
+    }
+
+    const docData = typeof record.data === 'object' && record.data !== null ? record.data : {};
+    docData.status = status;
+    docData.remarks = remarks || '';
+    if (status === 'approved') {
+      docData.approvedAt = new Date();
+    }
+
+    const updated = await model.update({
       where: { id },
-      data: updateData
+      data: { data: docData }
     });
 
-    successResponse(res, 'Admission status updated successfully', admission);
+    successResponse(res, 'Admission status updated successfully', { _id: updated.id, ...docData });
   } catch (error) {
-    if (error.code === 'P2025') {
-      return errorResponse(res, 'Admission not found', [], 404);
-    }
     errorResponse(res, error.message, [], 500);
   }
 };
@@ -117,12 +136,21 @@ const updateAdmissionStatus = async (req, res) => {
 const deleteAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.admission.delete({ where: { id } });
+    
+    let record = await prisma.enquiry.findUnique({ where: { id } });
+    if (record) {
+      await prisma.enquiry.delete({ where: { id } });
+    } else {
+      record = await prisma.admission.findUnique({ where: { id } });
+      if (record) {
+        await prisma.admission.delete({ where: { id } });
+      } else {
+        return errorResponse(res, 'Admission/Enquiry not found', [], 404);
+      }
+    }
+
     successResponse(res, 'Admission deleted successfully', null);
   } catch (error) {
-    if (error.code === 'P2025') {
-      return errorResponse(res, 'Admission not found', [], 404);
-    }
     errorResponse(res, error.message, [], 500);
   }
 };
