@@ -401,6 +401,6 @@ ISC
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-05-26
+**Version:** 1.0.1  
+**Last Updated:** 2026-06-22
 "# Levora-Backend" 
