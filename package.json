@@ -9,7 +9,8 @@
     "dev": "nodemon server.js",
     "test": "jest --detectOpenHandles",
     "db:migrate": "sequelize db:migrate",
-    "db:seed": "sequelize db:seed:all"
+    "db:seed": "sequelize db:seed:all",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "edtech",
