@@ -127,6 +127,10 @@ SMTP_PASS=your_app_password
 SENDER_EMAIL=noreply@levoraacademy.com
 SENDER_NAME=LEVORA ACADEMY
 
+# ===== GEMINI AI CONFIGURATION =====
+# Sign up at https://aistudio.google.com/
+GEMINI_API_KEY=your_gemini_api_key
+
 # ===== FRONTEND CONFIGURATION =====
 FRONTEND_URL=http://localhost:3000
 
@@ -158,6 +162,7 @@ MAX_OTP_ATTEMPTS=3
 These are optional for testing:
 - **Cloudinary** - [Sign up free](https://cloudinary.com/users/register/free)
 - **Razorpay** - [Get sandbox keys](https://dashboard.razorpay.com/app/keys)
+- **Google AI Studio** - [Get Gemini API key](https://aistudio.google.com/)
 
 ---
 

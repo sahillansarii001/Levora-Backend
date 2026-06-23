@@ -52,10 +52,10 @@ Server/
 │   │   ├── attendance.js
 │   │   ├── tests.js
 │   │   ├── fees.js
-│   │   ├── blog.js
 │   │   ├── admin.js
 │   │   ├── contact.js
-│   │   └── notices.js
+│   │   ├── notices.js
+│   │   └── chat.js            # Gemini AI Chatbot
 │   │
 │   ├── middleware/
 │   │   ├── auth.js            # JWT verification
@@ -135,6 +135,9 @@ Server/
    SMTP_HOST=smtp.gmail.com
    SMTP_USER=your_email@gmail.com
    SMTP_PASS=your_app_password
+   
+   # Gemini AI
+   GEMINI_API_KEY=your_gemini_api_key
    
    # Frontend
    FRONTEND_URL=http://localhost:3000
@@ -225,6 +228,9 @@ Server/
 - `GET /api/admin/analytics/revenue` - Revenue analytics
 - `GET /api/admin/analytics/attendance` - Attendance analytics
 - `GET /api/admin/analytics/performance` - Performance analytics
+
+### AI Chatbot (`/api/chat`)
+- `POST /api/chat` - Interact with Virtual Academic Counselor
 
 ---
 
@@ -318,6 +324,7 @@ Mongoose handles schema creation automatically upon application start.
 - **cloudinary** - Image hosting
 - **razorpay** - Payment gateway
 - **nodemailer** - Email service
+- **@google/genai** - Gemini API integration
 - **multer** - File uploads
 - **helmet** - HTTP headers
 - **cors** - CORS middleware
