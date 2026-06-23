@@ -29,7 +29,7 @@ export const authStudent = async (req, res) => {
       res.json({
         success: true,
         data: {
-          _id: student.id,
+          id: student.id,
           name: student.name,
           email: student.email,
           className: student.className,
@@ -76,7 +76,7 @@ export const registerStudent = async (req, res) => {
       res.status(201).json({
         success: true,
         data: {
-          _id: student.id,
+          id: student.id,
           name: student.name,
           email: student.email,
           className: student.className,

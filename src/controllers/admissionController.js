@@ -24,7 +24,7 @@ const submitAdmission = async (req, res) => {
       }
     });
 
-    successResponse(res, 'Admission submitted successfully', { _id: admission.id, ...admission.data }, 201);
+    successResponse(res, 'Admission submitted successfully', { id: admission.id, ...admission.data }, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -54,7 +54,7 @@ const submitPublicAdmission = async (req, res) => {
       }
     });
 
-    successResponse(res, 'Inquiry submitted successfully', { _id: enquiry.id, ...enquiry.data }, 201);
+    successResponse(res, 'Inquiry submitted successfully', { id: enquiry.id, ...enquiry.data }, 201);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }
@@ -72,7 +72,7 @@ const getAdmissions = async (req, res) => {
     const formattedRows = allRows.map(row => {
       const docData = typeof row.data === 'object' && row.data !== null ? row.data : {};
       return {
-        _id: row.id,
+        id: row.id,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         ...docData
@@ -127,7 +127,7 @@ const updateAdmissionStatus = async (req, res) => {
       data: { data: docData }
     });
 
-    successResponse(res, 'Admission status updated successfully', { _id: updated.id, ...docData });
+    successResponse(res, 'Admission status updated successfully', { id: updated.id, ...docData });
   } catch (error) {
     errorResponse(res, error.message, [], 500);
   }

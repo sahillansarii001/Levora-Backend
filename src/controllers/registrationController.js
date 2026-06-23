@@ -17,9 +17,9 @@ export const getPendingRegistrations = async (req, res) => {
       select: { id: true, name: true, email: true, status: true, createdAt: true, phone: true }
     });
 
-    const formattedStudents = students.map(s => ({ ...s, _id: s.id, role: 'student' }));
-    const formattedParents = parents.map(p => ({ ...p, _id: p.id, role: 'parent' }));
-    const formattedFaculties = faculties.map(f => ({ ...f, _id: f.id, role: 'faculty' }));
+    const formattedStudents = students.map(s => ({ ...s, role: 'student' }));
+    const formattedParents = parents.map(p => ({ ...p, role: 'parent' }));
+    const formattedFaculties = faculties.map(f => ({ ...f, role: 'faculty' }));
 
     const allPending = [...formattedStudents, ...formattedParents, ...formattedFaculties].sort((a, b) => {
       return new Date(b.createdAt) - new Date(a.createdAt);

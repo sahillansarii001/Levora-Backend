@@ -26,7 +26,7 @@ export const getStudentTestResults = async (req, res) => {
       const exam = r.examId ? await prisma.exam.findUnique({ where: { id: r.examId } }) : null;
       
       return {
-        _id: r.id,
+        id: r.id,
         name: exam?.title || r.subject || 'Unknown Test',
         date: exam?.examDate ? new Date(exam.examDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : 'N/A',
         score: r.marksObtained,

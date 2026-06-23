@@ -10,7 +10,10 @@ const getSalaryRecords = async (req, res) => {
     const records = await prisma.salary.findMany({
       skip,
       take: parseInt(limit),
-      orderBy: { paymentDate: 'desc' }
+      orderBy: { paymentDate: 'desc' },
+      include: {
+        faculty: { select: { id: true, name: true, subject: true } }
+      }
     });
 
     paginatedResponse(res, records, page, limit, count, 'Salary records fetched successfully');
@@ -86,7 +89,10 @@ const getMySalary = async (req, res) => {
     const facultyId = req.user.id;
     const records = await prisma.salary.findMany({ 
       where: { facultyId },
-      orderBy: { paymentDate: 'desc' }
+      orderBy: { paymentDate: 'desc' },
+      include: {
+        faculty: { select: { id: true, name: true, subject: true } }
+      }
     });
     successResponse(res, 'Salary records fetched successfully', records);
   } catch (error) {

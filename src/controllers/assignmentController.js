@@ -90,7 +90,7 @@ export const getFacultyAssignments = async (req, res) => {
       const total = course ? (course.totalStudents || 0) : 0;
       
       return {
-        _id: a.id,
+        id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
@@ -142,7 +142,7 @@ export const getStudentAssignments = async (req, res) => {
         take: 10
       });
       const mappedAssignments = assignments.map(a => ({
-        _id: a.id,
+        id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
@@ -168,7 +168,7 @@ export const getStudentAssignments = async (req, res) => {
       const submissionsArr = Array.isArray(a.submissions) ? a.submissions : [];
       const isCompleted = submissionsArr.some(s => String(s.studentId) === String(studentId) && s.status === 'completed');
       return {
-        _id: a.id,
+        id: a.id,
         title: a.title,
         description: a.description,
         subject: a.subject,
