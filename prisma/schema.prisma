@@ -135,7 +135,7 @@ model SystemSetting {
   id               String   @id @default(uuid())
   academyName      String   @default("Levora Academy")
   contactEmail     String   @default("support@levoraacademy.com")
-  contactPhone     String   @default("+91 9876543210")
+  contactPhone     String   @default("+91 816 997 6265")
   address          String   @default("Mohite Patil Nagar, Shop no-74, Mankhurd West, Mumbai - 400043")
   visitingHours    String   @default("Mon - Sun: 8:00 AM - 9:00 PM")
   facebookUrl      String   @default("https://facebook.com/levoraacademy")
