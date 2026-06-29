@@ -3,13 +3,11 @@ import { errorResponse } from '../utils/responseHelper.js';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
 
-// Initialize the GenAI client
-// Requires GEMINI_API_KEY environment variable to be set.
-const ai = new GoogleGenAI({});
-
 export const handleChat = async (req, res) => {
   try {
-    const { messages } = req.body;
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+    const { messages, model } = req.body;
     
     if (!messages || !Array.isArray(messages)) {
       return errorResponse(res, 'Invalid chat history provided.', [], 400);
@@ -53,7 +51,7 @@ export const handleChat = async (req, res) => {
     let systemInstruction = `You are the official virtual academic counselor and assistant for Levora Academy.
     
 About Levora Academy:
-- Tagline: Rise • Learn • Lead
+- Tagline: • Rise • Learn • Lead
 - Type: Premium future-ready EdTech & coaching ecosystem
 - Offerings: Pre-Primary to Class 12, JEE and NEET preparation, Coding & Tech Courses (Python, Java, Full Stack Web Development, App Development, UI/UX Design, AI & Data Science), and Spoken English.
 - Admission: Admissions for the 2025-26 batch are currently open. No mandatory entrance test is required for most programs. Students can apply for admission directly online through the website by visiting the Admissions page or clicking "Apply Now".
@@ -96,15 +94,42 @@ Your Role:
       parts: [{ text: msg.content }]
     }));
 
-    // Call the Gemini API
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: contents,
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.5, // keep responses relatively grounded
+    // List of free/high-quota models that work on this API key
+    const freeModels = [
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest'
+    ];
+
+    let response;
+    let lastError;
+
+    // Try requested model first (if any), otherwise fall back to the free models
+    const modelsToTry = model ? [model, ...freeModels] : freeModels;
+
+    for (const m of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model: m,
+          contents: contents,
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.5, // keep responses relatively grounded
+          }
+        });
+        
+        // If successful, break out of the loop
+        break;
+      } catch (err) {
+        console.warn(`Model ${m} failed (${err.status || err.message}), falling back to next model...`);
+        lastError = err;
       }
-    });
+    }
+
+    if (!response) {
+      throw lastError || new Error('All fallback models failed to generate content.');
+    }
 
     const aiMessage = response.text;
 
