@@ -146,17 +146,18 @@ export const adminLogin = async (req, res) => {
     const email = req.body.email?.trim();
     const password = req.body.password?.trim();
 
-    const isAdmin = email === (process.env.ADMIN_EMAIL || 'admin@levora.in') && 
-                    password === (process.env.ADMIN_PASSWORD || 'LevoraAdmin2026!');
-                    
-    const isSuperAdmin = email === (process.env.SUPERADMIN_EMAIL || 'superadmin@levora.in') && 
-                         password === (process.env.SUPERADMIN_PASSWORD || 'LevoraSuper2026!');
-
-    if (!isAdmin && !isSuperAdmin) {
+    const adminUser = await prisma.admin.findUnique({ where: { email } });
+    
+    if (!adminUser) {
       return errorResponse(res, 'Invalid administrative credentials', [], 401);
     }
 
-    const role = isSuperAdmin ? 'superadmin' : 'admin';
+    const isValid = await bcrypt.compare(password, adminUser.password);
+    if (!isValid) {
+      return errorResponse(res, 'Invalid administrative credentials', [], 401);
+    }
+
+    const role = adminUser.role;
 
     const token = jwt.sign(
       { role, email },
@@ -180,20 +181,19 @@ export const login = async (req, res) => {
     }
 
     // 1. Check Admin / Superadmin
-    const isAdmin = identifier === (process.env.ADMIN_EMAIL || 'admin@levora.in') && 
-                    password === (process.env.ADMIN_PASSWORD || 'LevoraAdmin2026!');
-                    
-    const isSuperAdmin = identifier === (process.env.SUPERADMIN_EMAIL || 'superadmin@levora.in') && 
-                         password === (process.env.SUPERADMIN_PASSWORD || 'LevoraSuper2026!');
+    const adminUser = await prisma.admin.findUnique({ where: { email: identifier } });
 
-    if (isAdmin || isSuperAdmin) {
-      const role = isSuperAdmin ? 'superadmin' : 'admin';
-      const token = jwt.sign(
-        { role, email: identifier },
-        process.env.JWT_SECRET || 'secret',
-        { expiresIn: process.env.JWT_EXPIRE || '15m' }
-      );
-      return successResponse(res, `${role === 'superadmin' ? 'Super Admin' : 'Admin'} login successful`, { token, role });
+    if (adminUser) {
+      const isValid = await bcrypt.compare(password, adminUser.password);
+      if (isValid) {
+        const role = adminUser.role;
+        const token = jwt.sign(
+          { role, email: identifier },
+          process.env.JWT_SECRET || 'secret',
+          { expiresIn: process.env.JWT_EXPIRE || '15m' }
+        );
+        return successResponse(res, `${role === 'superadmin' ? 'Super Admin' : 'Admin'} login successful`, { token, role });
+      }
     }
 
     // 2. Check Student (by email or studentId)

@@ -56,6 +56,7 @@ import testimonialRoutes from './routes/testimonials.js';
 import studentAuthRoutes from './routes/studentAuth.js';
 import registrationRoutes from './routes/registration.routes.js';
 import chatRoutes from './routes/chat.js';
+import usersRoutes from './routes/users.js';
 
 import { generalLimiter } from './middleware/rateLimiter.js';
 app.use(generalLimiter);
@@ -87,6 +88,7 @@ app.use('/api/assignments', assignmentRoutes);
 app.use('/api/exam-results', examResultRoutes);
 app.use('/api/testimonials', testimonialRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
