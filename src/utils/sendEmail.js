@@ -139,3 +139,40 @@ export const rejectionEmail = (userName) => {
     <p>Best regards,<br/>LEVORA ACADEMY Team</p>
   `;
 };
+
+export const subscriptionCredentialsEmail = (email, password) => {
+  return `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 0; width: 100%;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin: 0 auto;">
+        <tr>
+          <td style="background-color: #0B1F3A; padding: 40px 0; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px;">LEVORA ACADEMY</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 40px 40px;">
+            <h2 style="color: #1e293b; font-size: 24px; font-weight: 600; margin-top: 0; margin-bottom: 20px;">Your Subscription Credentials</h2>
+            <p style="color: #475569; font-size: 16px; line-height: 24px; margin-bottom: 30px;">
+              Thank you for your purchase!<br><br>
+              You can now log in to your account to access your premium study materials. Here are your temporary login credentials:
+            </p>
+            
+            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+              <p style="margin: 0 0 10px 0; color: #334155;"><strong>Email:</strong> ${email}</p>
+              <p style="margin: 0; color: #334155;"><strong>Password:</strong> <span style="font-family: monospace; font-size: 18px; font-weight: 600; background-color: #e2e8f0; padding: 2px 8px; border-radius: 4px;">${password}</span></p>
+            </div>
+            
+            <p style="color: #64748b; font-size: 14px; line-height: 22px; margin-bottom: 30px;">
+              <strong>Important:</strong> You will be required to change your password immediately upon your first login for security purposes.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+            <p style="color: #94a3b8; font-size: 13px; line-height: 20px; margin: 0;">
+              If you have any questions, please reply to this email or contact our support team.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+};

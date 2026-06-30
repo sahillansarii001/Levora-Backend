@@ -34,6 +34,7 @@ export const authStudent = async (req, res) => {
           email: student.email,
           className: student.className,
           isSubscribed: student.isSubscribed,
+          materialsAccess: student.materialsAccess,
           token: generateToken(student.id),
         }
       });
@@ -81,6 +82,7 @@ export const registerStudent = async (req, res) => {
           email: student.email,
           className: student.className,
           isSubscribed: student.isSubscribed,
+          materialsAccess: student.materialsAccess,
           token: generateToken(student.id),
         }
       });

@@ -56,7 +56,7 @@ const getStudentProfile = async (req, res) => {
 
 const createStudent = async (req, res) => {
   try {
-    const { name, email, phone, password, className, board, course, batch, parentName, schoolName, collegeName, totalFees } = req.body;
+    const { name, email, phone, password, className, board, course, batch, parentName, schoolName, collegeName, totalFees, materialsAccess } = req.body;
 
     const existingStudent = await prisma.student.findUnique({ where: { email } });
     if (existingStudent) {
@@ -81,10 +81,10 @@ const createStudent = async (req, res) => {
         batch,
         parentName,
         schoolName,
-        collegeName,
         password: hashedPassword,
         totalFees: totalFees ? parseFloat(totalFees) : 0,
-        status: 'active'
+        status: 'active',
+        materialsAccess: Boolean(materialsAccess)
       }
     });
 

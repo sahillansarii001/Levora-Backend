@@ -212,7 +212,7 @@ export const login = async (req, res) => {
         }
         const { accessToken, refreshToken } = generateTokens(student, 'student');
         return successResponse(res, 'Student login successful', {
-          student: { id: student.id, name: student.name, email: student.email, studentId: student.studentId, className: student.className },
+          student: { id: student.id, name: student.name, email: student.email, studentId: student.studentId, className: student.className, materialsAccess: student.materialsAccess },
           role: 'student',
           accessToken,
           refreshToken,
@@ -237,7 +237,7 @@ export const login = async (req, res) => {
         }
         const { accessToken, refreshToken } = generateTokens(parent, 'parent');
         return successResponse(res, 'Parent login successful', {
-          user: { id: parent.id, name: parent.name, email: parent.email, parentOf: parent.parentOf },
+          user: { id: parent.id, name: parent.name, email: parent.email, parentOf: parent.parentOf, materialsAccess: parent.materialsAccess },
           role: 'parent',
           accessToken,
           refreshToken,
@@ -262,8 +262,33 @@ export const login = async (req, res) => {
         }
         const { accessToken, refreshToken } = generateTokens(faculty, 'faculty');
         return successResponse(res, 'Faculty login successful', {
-          user: { id: faculty.id, name: faculty.name, email: faculty.email, facultyId: faculty.facultyId, subject: faculty.subject },
+          user: { id: faculty.id, name: faculty.name, email: faculty.email, facultyId: faculty.facultyId, subject: faculty.subject, materialsAccess: faculty.materialsAccess },
           role: 'faculty',
+          accessToken,
+          refreshToken,
+          token: accessToken
+        });
+      }
+    }
+
+    // 5. Check normal User
+    const user = await prisma.user.findUnique({
+      where: { email: identifier }
+    });
+
+    if (user) {
+      const isValid = user.password === password || await bcrypt.compare(password, user.password);
+      if (isValid) {
+        if (user.status === 'pending') {
+          return errorResponse(res, 'Account pending approval by admin', [], 401);
+        }
+        if (user.status === 'rejected') {
+          return errorResponse(res, 'Account registration rejected', [], 401);
+        }
+        const { accessToken, refreshToken } = generateTokens(user, 'user');
+        return successResponse(res, 'User login successful', {
+          user: { id: user.id, name: user.name, email: user.email, materialsAccess: user.materialsAccess, needsPasswordReset: user.needsPasswordReset },
+          role: 'user',
           accessToken,
           refreshToken,
           token: accessToken
@@ -391,7 +416,7 @@ export const googleLogin = async (req, res) => {
     // Login user
     const { accessToken, refreshToken } = generateTokens(user, role);
 
-    const responseData = { id: user.id, name: user.name, email: user.email, profileImage: user.profileImage || picture };
+    const responseData = { id: user.id, name: user.name, email: user.email, profileImage: user.profileImage || picture, materialsAccess: user.materialsAccess };
     if (role === 'student') responseData.studentId = user.studentId;
     if (role === 'faculty') responseData.facultyId = user.facultyId;
 
@@ -491,5 +516,36 @@ export const resetPassword = async (req, res) => {
     return errorResponse(res, 'No account found with this email', [], 404);
   } catch (error) {
     errorResponse(res, error.message, [], 500);
+  }
+};
+
+export const setupAccount = async (req, res) => {
+  try {
+    const { email, password, newEmail } = req.body;
+
+    if (!email || !password) {
+      return errorResponse(res, 'Email and password are required', [], 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return errorResponse(res, 'User not found', [], 404);
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    await prisma.user.update({
+      where: { email },
+      data: {
+        email: newEmail || email,
+        password: hashedPassword,
+        needsPasswordReset: false
+      }
+    });
+
+    return successResponse(res, 'Account setup successful. Please log in with your new credentials.', {});
+  } catch (error) {
+    return errorResponse(res, error.message, [], 500);
   }
 };

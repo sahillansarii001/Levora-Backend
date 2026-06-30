@@ -26,6 +26,7 @@ model Parent {
   parentOf    String?
   childrenIds String[]
   status      String   @default("pending")
+  materialsAccess Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -106,6 +107,7 @@ model Student {
   totalFees          Float     @default(0)
   admissionDate      DateTime  @default(now())
   status             String    @default("pending")
+  materialsAccess    Boolean   @default(false)
   isSubscribed       Boolean   @default(false)
   subscriptionExpiry DateTime?
   createdAt          DateTime  @default(now())
@@ -164,6 +166,7 @@ model Faculty {
   shortIntro    String?
   profileImage  String?
   status        String   @default("pending")
+  materialsAccess Boolean @default(false)
   role          String   @default("faculty")
   salaries      Salary[]
   createdAt     DateTime @default(now())
@@ -327,10 +330,16 @@ model User {
   email        String         @unique
   phone        String?
   password     String
-  status       String         @default("active")
-  purchases    NotePurchase[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  status             String         @default("active")
+  role               String         @default("user")
+  isSubscribed       Boolean        @default(false)
+  subscriptionPlan   String?
+  subscriptionExpiry DateTime?
+  needsPasswordReset Boolean        @default(true)
+  materialsAccess    Boolean        @default(false)
+  purchases          NotePurchase[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 model NotePurchase {
