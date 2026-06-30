@@ -81,3 +81,37 @@ export const createUser = async (req, res) => {
     errorResponse(res, error.message, [], 500);
   }
 };
+
+export const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.user.delete({ where: { id } });
+    successResponse(res, 'User deleted successfully', null);
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    errorResponse(res, error.message, [], 500);
+  }
+};
+
+export const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    
+    if (!user) {
+      return errorResponse(res, 'User not found', [], 404);
+    }
+    
+    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+    
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { status: newStatus }
+    });
+    
+    successResponse(res, `User ${newStatus} successfully`, updatedUser);
+  } catch (error) {
+    console.error('Error toggling user status:', error);
+    errorResponse(res, error.message, [], 500);
+  }
+};
