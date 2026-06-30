@@ -41,4 +41,3 @@ const startServer = async () => {
 
 startServer();
 
-// Trigger restart: 12

@@ -6,35 +6,21 @@ export const getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: {
-        purchases: {
-          some: {}
-        }
-      },
-      include: {
-        purchases: true
+        isSubscribed: true
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
 
-    const materials = await prisma.studyMaterial.findMany({
-      select: { id: true, title: true }
-    });
-    
-    const materialMap = materials.reduce((acc, mat) => {
-      acc[mat.id] = mat.title;
-      return acc;
-    }, {});
-
     const formattedUsers = users.map(user => ({
       id: user.id,
       name: user.name,
       email: user.email,
-      phone: user.phone,
+      phone: user.phone || 'N/A',
       status: user.status,
-      purchaseCount: user.purchases.length,
-      purchasedNotes: user.purchases.map(p => materialMap[p.studyMaterialId] || 'Unknown Note'),
+      purchaseCount: 1,
+      purchasedNotes: [user.subscriptionPlan ? `${user.subscriptionPlan.charAt(0).toUpperCase() + user.subscriptionPlan.slice(1)} Plan` : 'Premium Access'],
       createdAt: user.createdAt
     }));
 
